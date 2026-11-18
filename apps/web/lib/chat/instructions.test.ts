@@ -1,0 +1,59 @@
+import type { Bot } from "../bots/repo";
+import type { Memory } from "../db/schema";
+import { buildInstructions, pickMemories } from "./instructions";
+
+const mem = (id: string, text: string, opts: Partial<Memory> = {}): Memory => ({
+  id,
+  botId: null,
+  text,
+  source: "you",
+  sourceMessageId: null,
+  pinned: false,
+  createdAt: `2026-11-${10 + Number(id)}T00:00:00Z`,
+  ...opts,
+});
+
+const bot: Bot = {
+  id: "b1",
+  name: "Maya",
+  handle: "maya",
+  job: "Runs my week",
+  avatar: { shape: "orb", color: 3, eyes: "dot", acc: "none", material: "clay" },
+  soul: "# Maya\n\n## Personality\nCalm and dry.",
+  interview: "done",
+  model: null,
+  instructions: ["Always cc Priya"],
+  createdAt: "",
+  updatedAt: "",
+};
+
+test("pickMemories keeps pinned first, then newest, within the budget", () => {
+  const all = [mem("1", "old"), mem("2", "pinned", { pinned: true }), mem("3", "new"), mem("4", "x".repeat(100))];
+  expect(pickMemories(all, 1000).map((m) => m.id)).toEqual(["2", "4", "3", "1"]);
+  expect(pickMemories(all, 20).map((m) => m.id)).toEqual(["2"]);
+});
+
+test("instructions put the soul before memories and include standing instructions", () => {
+  const text = buildInstructions({
+    bot,
+    botMemories: [mem("1", "Prefers Tuesday meetings", { botId: "b1" })],
+    userMemories: [mem("2", "Name is Ansh")],
+    now: new Date("2026-11-18T10:00:00Z"),
+    interview: { pending: false, answered: 0 },
+    tools: true,
+  });
+  expect(text).toContain("You are Maya");
+  expect(text.indexOf("Calm and dry.")).toBeLessThan(text.indexOf("Name is Ansh"));
+  expect(text).toContain("- Always cc Priya");
+  expect(text).toContain("Prefers Tuesday meetings");
+  expect(text).toContain("2026-11-18");
+  expect(text).toContain("remember tool");
+  expect(text).not.toContain("[[interview]]");
+});
+
+test("the interview marker appears only while the interview is pending", () => {
+  const text = buildInstructions({ bot: { ...bot, soul: "" }, botMemories: [], userMemories: [], now: new Date(), interview: { pending: true, answered: 2 }, tools: false });
+  expect(text).toContain("[[interview]]");
+  expect(text).toContain("question 3 of 5");
+  expect(text).not.toContain("remember tool");
+});
