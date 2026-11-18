@@ -1,0 +1,11 @@
+node_modules
+.next
+prototype/
+*.tsbuildinfo
+next-env.d.ts
+test-results
+playwright-report
+packages/cli/app/
+.grid-test/
+.DS_Store
+.claude/settings.local.json
