@@ -3,6 +3,8 @@ import { getDb, resetDbForTests } from "./client";
 import { bots, settings } from "./schema";
 
 useTempHome();
+// This file checks that data survives a reopen, so it needs the real on-disk database.
+process.env.GRID_DB_MEMORY = "0";
 
 afterAll(() => resetDbForTests());
 
