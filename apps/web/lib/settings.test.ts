@@ -1,5 +1,5 @@
 import { resetDbForTests } from "./db/client";
-import { getSetting, hostId, setSetting } from "./settings";
+import { deleteSetting, getSetting, hostId, setSetting } from "./settings";
 import { useTempHome } from "./test-home";
 
 useTempHome();
@@ -11,6 +11,12 @@ test("settings round-trip and overwrite", async () => {
   await setSetting("theme", { mode: "dark" });
   await setSetting("theme", { mode: "light" });
   expect(await getSetting("theme")).toEqual({ mode: "light" });
+});
+
+test("deleteSetting removes a key", async () => {
+  await setSetting("gone", 1);
+  await deleteSetting("gone");
+  expect(await getSetting("gone")).toBeUndefined();
 });
 
 test("hostId is stable", async () => {

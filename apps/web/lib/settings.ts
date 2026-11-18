@@ -14,6 +14,11 @@ export async function setSetting(key: string, value: unknown): Promise<void> {
   await db.insert(settings).values({ key, value }).onConflictDoUpdate({ target: settings.key, set: { value } });
 }
 
+export async function deleteSetting(key: string): Promise<void> {
+  const db = await getDb();
+  await db.delete(settings).where(eq(settings.key, key));
+}
+
 /** Stable, opaque id for this install (used by Sign in with ChatGPT). Holds no user data. */
 export async function hostId(): Promise<string> {
   const existing = await getSetting<string>("hostId");

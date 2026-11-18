@@ -7,5 +7,8 @@ export default defineConfig({
     environment: "node",
     include: ["lib/**/*.test.ts", "components/**/*.test.ts", "app/**/*.test.ts"],
     pool: "forks",
+    // Opening PGlite and running migrations takes a few seconds when files run in parallel.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 });
