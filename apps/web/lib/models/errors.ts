@@ -46,8 +46,18 @@ function networkCode(e: unknown): string | undefined {
   return undefined;
 }
 
+function wrapped(e: unknown): GridModelError | undefined {
+  let cur: unknown = e;
+  for (let i = 0; i < 5 && cur && typeof cur === "object"; i++) {
+    if (cur instanceof GridModelError) return cur;
+    cur = (cur as { cause?: unknown }).cause;
+  }
+  return undefined;
+}
+
 export function toGridError(e: unknown, providerLabel = "the model server"): GridModelError {
-  if (e instanceof GridModelError) return e;
+  const inner = wrapped(e);
+  if (inner) return inner;
   const status = statusOf(e);
   if (status === 401 || status === 403) {
     return new GridModelError("auth", `${providerLabel} rejected the key.`, { action: SETTINGS_ACTION, cause: e });

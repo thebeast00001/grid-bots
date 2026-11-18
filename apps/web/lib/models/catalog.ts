@@ -59,8 +59,18 @@ async function listUnchecked(p: CatalogProvider): Promise<ModelInfo[]> {
     }
     case "mock":
       return [{ id: "mock-chat", name: "Test model", tools: true, vision: true }];
-    case "chatgpt":
-      throw new GridModelError("unsupported", "ChatGPT sign-in isn't available yet.");
+    case "chatgpt": {
+      // Caller passes a fresh access token in secret.access (see getAccessToken).
+      const access = typeof p.secret?.access === "string" ? p.secret.access : "";
+      type Item = { id?: string; slug?: string; display_name?: string; visibility?: string };
+      const body = await getJson<{ data?: Item[]; models?: Item[] }>("https://api.openai.com/v1/models", {
+        headers: { authorization: `Bearer ${access}` },
+      });
+      return (body.data ?? body.models ?? [])
+        .filter((m) => (m.visibility ?? "list") === "list")
+        .map((m) => ({ id: m.slug ?? m.id ?? "", name: m.display_name ?? m.slug ?? m.id ?? "", tools: true, vision: true }))
+        .filter((m) => m.id);
+    }
     default:
       throw new GridModelError("unsupported", `Unknown provider ${p.kind}.`);
   }

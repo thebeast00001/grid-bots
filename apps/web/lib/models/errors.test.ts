@@ -20,6 +20,11 @@ test("toGridError keeps GridModelErrors as they are", () => {
   expect(toGridError(original)).toBe(original);
 });
 
+test("toGridError finds a GridModelError wrapped as a cause", () => {
+  const original = new GridModelError("limit", "plan limit");
+  expect(toGridError(new Error("Failed to fetch", { cause: original }))).toBe(original);
+});
+
 test("unknown errors become unknown with their message", () => {
   const g = toGridError(new Error("boom"));
   expect(g).toMatchObject({ code: "unknown", message: "boom" });

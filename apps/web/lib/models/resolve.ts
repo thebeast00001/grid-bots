@@ -9,6 +9,7 @@ import { createXai } from "@ai-sdk/xai";
 import type { LanguageModel } from "ai";
 import { getSetting } from "../settings";
 import { listModels } from "./catalog";
+import { chatgptModel } from "./chatgpt/model";
 import { GridModelError } from "./errors";
 import { PROVIDER_KINDS, type ModelRef, type ProviderKind } from "./kinds";
 import { mockModel } from "./mock";
@@ -18,13 +19,6 @@ export type ResolvedModel = { model: LanguageModel; ref: ModelRef; tools: boolea
 
 const NO_MODEL = () =>
   new GridModelError("no-model", "Connect a model to start chatting.", { action: { label: "Connect a model", href: "/welcome" } });
-
-/** Builds a model for a provider. The ChatGPT plan is added by lib/models/chatgpt. */
-export type ChatgptFactory = (p: LoadedProvider, modelId: string) => LanguageModel;
-let chatgptFactory: ChatgptFactory | null = null;
-export function registerChatgptFactory(f: ChatgptFactory) {
-  chatgptFactory = f;
-}
 
 function makeModel(p: LoadedProvider, modelId: string): LanguageModel {
   const apiKey = typeof p.secret?.apiKey === "string" ? p.secret.apiKey : undefined;
@@ -51,8 +45,7 @@ function makeModel(p: LoadedProvider, modelId: string): LanguageModel {
     case "ollama":
       return createOpenAICompatible({ name: "ollama", baseURL: `${baseURL}/v1` })(modelId);
     case "chatgpt":
-      if (!chatgptFactory) throw new GridModelError("unsupported", "ChatGPT sign-in isn't available yet.");
-      return chatgptFactory(p, modelId);
+      return chatgptModel(p.id, modelId);
     case "mock":
       return mockModel();
   }
