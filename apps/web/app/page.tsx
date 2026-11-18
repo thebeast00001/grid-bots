@@ -1,14 +1,10 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { listProviders } from "@/lib/models/providers-repo";
 
-export default function Home() {
-  return (
-    <main className="grid h-dvh place-items-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-semibold">Grid</h1>
-        <Link href="/lab" className="text-[var(--text-2)] underline">
-          Critter lab
-        </Link>
-      </div>
-    </main>
-  );
+export const dynamic = "force-dynamic";
+
+/** First run → connect a model; otherwise make a bot (Task 7 sends returning users to their bots). */
+export default async function Home() {
+  const providers = await listProviders();
+  redirect(providers.length === 0 ? "/welcome" : "/new");
 }
