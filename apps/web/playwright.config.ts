@@ -10,6 +10,8 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   timeout: 60_000,
+  // The e2e server runs in dev mode: a route's first hit includes compiling it.
+  expect: { timeout: 15_000 },
   reporter: "list",
   use: { baseURL: `http://127.0.0.1:${PORT}`, trace: "retain-on-failure" },
   projects: [{ name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } }],

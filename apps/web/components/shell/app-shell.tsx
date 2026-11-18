@@ -1,6 +1,7 @@
 "use client";
 
 import { LayoutGroup } from "motion/react";
+import { Toaster } from "sonner";
 import { BotList } from "./bot-list";
 import { BotsProvider } from "./bots-store";
 import { Rail } from "./rail";
@@ -20,6 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <main className="relative flex min-w-0 flex-1">{children}</main>
         </div>
       </LayoutGroup>
+      <Toaster position="bottom-center" toastOptions={{ className: "!rounded-2xl !text-[14px]" }} />
     </BotsProvider>
   );
 }

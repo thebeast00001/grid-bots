@@ -1,4 +1,21 @@
 @import "tailwindcss";
+/* Streamdown (markdown in bot replies) ships Tailwind classes. */
+@source "../../../node_modules/streamdown/dist/*.js";
+
+/* Map the shadcn-style names Streamdown uses onto Grid's tokens. */
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-muted: var(--surface-3);
+  --color-muted-foreground: var(--text-2);
+  --color-border: var(--edge-strong);
+  --color-input: var(--edge-strong);
+  --color-primary: var(--text);
+  --color-primary-foreground: var(--bg);
+  --radius: 0.75rem;
+}
 
 /* ── Tokens ─────────────────────────────────────────────────────────── */
 :root {
