@@ -1,0 +1,16 @@
+{
+  "name": "grid",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @grid/web dev",
+    "build": "pnpm --filter @grid/web build",
+    "test": "pnpm --filter @grid/web test",
+    "e2e": "pnpm --filter @grid/web e2e",
+    "typecheck": "pnpm --filter @grid/web typecheck"
+  }
+}
