@@ -30,7 +30,7 @@ export async function searchMemories(botId: string | null, q: string): Promise<M
     .orderBy(desc(memories.pinned), desc(memories.createdAt));
 }
 
-export async function addMemory(input: { botId: string | null; text: string; source: "you" | "bot"; sourceMessageId?: string }): Promise<Memory> {
+export async function addMemory(input: { botId: string | null; text: string; source: "you" | "bot"; sourceMessageId?: string; pinned?: boolean }): Promise<Memory> {
   const text = input.text.trim().slice(0, 1000);
   if (!text) throw new HttpStatus(400, "empty", "A memory needs some text.");
   const db = await getDb();
@@ -42,6 +42,7 @@ export async function addMemory(input: { botId: string | null; text: string; sou
       text,
       source: input.source,
       sourceMessageId: input.sourceMessageId ?? null,
+      pinned: input.pinned ?? false,
     })
     .returning();
   await remirror(input.botId);

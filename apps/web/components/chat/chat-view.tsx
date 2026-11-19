@@ -7,6 +7,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowDown, PanelRight, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { MemoryList } from "@/components/profile/memory-list";
 import { ProfilePanel } from "@/components/profile/profile-panel";
 import { useBots } from "@/components/shell/bots-store";
 import { api } from "@/lib/api-client";
@@ -69,6 +70,8 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
   const [writing, setWriting] = useState(false);
   const [soulNote, setSoulNote] = useState<SoulNote>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  // Bumped when memories may have changed, so an open memory list reloads.
+  const [memoryVersion, setMemoryVersion] = useState(0);
 
   // A brand-new bot speaks first. A timer the cleanup cancels (rather than sending straight
   // from the effect) survives React's dev-mode mount → unmount → mount without sending twice
@@ -102,8 +105,9 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
   useEffect(() => {
     if (prevStatus.current === "streaming" && status === "ready") {
       setJustFinished(true);
-      // Update the list's last-message preview and ordering.
+      // Update the list's last-message preview and ordering, and any memories the bot saved.
       void refresh().catch(() => {});
+      setMemoryVersion((v) => v + 1);
       if (interviewing && answered >= QUESTIONS) void finishInterview(false);
       const t = window.setTimeout(() => setJustFinished(false), 1200);
       prevStatus.current = status;
@@ -178,6 +182,18 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
     }
   };
 
+  const remember = async (m: UIMessage) => {
+    const text = textOf(m);
+    if (!text) return;
+    try {
+      await api("/api/memories", { method: "POST", body: JSON.stringify({ botId: null, text: text.slice(0, 1000), sourceMessageId: m.id }) });
+      setMemoryVersion((v) => v + 1);
+      toast(`Saved to what ${bot.name} knows about you`);
+    } catch {
+      toast("Couldn't save that.");
+    }
+  };
+
   const setModel = async (model: ModelRef | null) => {
     upsert(await api<BotView>(`/api/bots/${bot.id}`, { method: "PATCH", body: JSON.stringify({ model }) }));
   };
@@ -230,6 +246,7 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
                       onReact: (e) => react(m, e),
                       onReply: () => setQuote(textOf(m).slice(0, 280)),
                       onPin: mine ? () => pin(m) : undefined,
+                      onRemember: mine ? () => remember(m) : undefined,
                       onEdit: mine && !busy ? (text) => void sendMessage({ text, messageId: m.id }) : undefined,
                       onRegenerate: !mine && i === lastBotIdx && !busy ? () => void regenerate() : undefined,
                     }}
@@ -337,7 +354,9 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
           transition={{ duration: 0.22, ease: ease.out }}
           className="edge-l w-[320px] shrink-0 bg-[var(--panel)] max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-30"
         >
-          <ProfilePanel bot={bot} onClose={() => setPanelOpen(false)} />
+          <ProfilePanel bot={bot} onClose={() => setPanelOpen(false)}>
+            <MemoryList bot={bot} version={memoryVersion} />
+          </ProfilePanel>
         </motion.div>
       )}
     </div>

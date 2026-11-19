@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { UIMessage } from "ai";
 import { AnimatePresence, motion } from "motion/react";
-import { CornerUpLeft, FileText, Pencil, Pin, RotateCcw } from "lucide-react";
+import { BookmarkPlus, CornerUpLeft, FileText, Pencil, Pin, RotateCcw } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { ease, spring } from "@/lib/motion";
 
@@ -16,6 +16,7 @@ export type RowActions = {
   onReact: (emoji: string | null) => void;
   onReply: () => void;
   onPin?: () => void;
+  onRemember?: () => void;
   onEdit?: (text: string) => void;
   onRegenerate?: () => void;
 };
@@ -101,6 +102,11 @@ export function MessageRow({ m, firstOfGroup, lastOfGroup, streaming, animateIn,
               <ToolButton label="Reply" onClick={actions.onReply}>
                 <CornerUpLeft size={15} />
               </ToolButton>
+              {actions.onRemember && (
+                <ToolButton label="Remember this" onClick={() => { actions.onRemember?.(); setToolbar(false); }}>
+                  <BookmarkPlus size={15} />
+                </ToolButton>
+              )}
               {actions.onPin && (
                 <ToolButton label="Pin as instruction" onClick={actions.onPin}>
                   <Pin size={15} />
