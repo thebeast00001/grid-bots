@@ -20,7 +20,9 @@ self.addEventListener("activate", (event) => {
 // A notification (a reminder going off) opens its chat, reusing an open Grid tab.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  const target = new URL(event.notification.data?.url || "/", self.location.origin);
+  // Only ever open Grid's own pages.
+  const url = target.origin === self.location.origin ? target.href : self.location.origin + "/";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((tabs) => {
       const tab = tabs.find((t) => new URL(t.url).origin === self.location.origin);

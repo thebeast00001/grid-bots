@@ -117,3 +117,15 @@ describe("snoozeUntil", () => {
     expect(snoozeUntil("tomorrow", { now, zone })).toEqual(local("2026-11-20T09:00"));
   });
 });
+
+describe("a day of the month", () => {
+  test("“on the 1st” is the next 1st, at the time said", () => {
+    expect(parseWhen("every month on the 1st at 9am", { now, zone })).toMatchObject({ at: local("2026-12-01T09:00") });
+    expect(parseWhen("on the 25th", { now, zone })).toEqual({ at: local("2026-11-25T09:00"), timeGuessed: true });
+  });
+
+  test("a day this month that has passed means next month; short months clamp", () => {
+    expect(parseWhen("the 3rd at 6pm", { now, zone })).toMatchObject({ at: local("2026-12-03T18:00") });
+    expect(parseWhen("on the 31st", at("2027-02-02T10:00"))).toMatchObject({ at: local("2027-02-28T09:00") });
+  });
+});

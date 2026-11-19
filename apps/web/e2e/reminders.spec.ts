@@ -91,3 +91,37 @@ test("a reminder for another bot shows an unread dot and a toast that opens it",
   await expect(page.getByRole("link", { name: /There/ }).getByTestId("unread")).toHaveCount(0);
   await expect(page).not.toHaveTitle(/^\(\d+\) /);
 });
+
+test("reminder cards take the bot's colour, keep long text short and skip the reaction bar", async ({ page }) => {
+  await connectMock(page);
+  const make = async (name: string, color: number) => {
+    const res = await page.request.post("/api/bots", { headers: H, data: { name, job: "", avatar: { shape: "orb", color, eyes: "dot", acc: "none", material: "clay" } } });
+    const { id } = (await res.json()) as { id: string };
+    await page.request.patch(`/api/bots/${id}`, { headers: H, data: { interview: "skipped" } });
+    return id;
+  };
+  const green = await make("Green", 4);
+  const pink = await make("Pink", 13);
+  const long = "Renew the passport before the trip, check the photo size and book the slot early. ".repeat(6).slice(0, 500);
+  await page.request.post("/api/reminders", { headers: H, data: { botId: green, text: long, when: "in 1 second" } });
+  await page.request.post("/api/reminders", { headers: H, data: { botId: pink, text: "Pink one", when: "in 1 second" } });
+  await page.waitForTimeout(2500);
+
+  const cardBg = async (id: string) => {
+    await page.goto(`/bots/${id}`);
+    const card = page.getByTestId("reminder-due").first();
+    await expect(card).toBeVisible();
+    return card.evaluate((el) => getComputedStyle(el).backgroundColor);
+  };
+  const greenBg = await cardBg(green);
+  const card = page.getByTestId("reminder-due").first();
+  expect((await card.boundingBox())!.height).toBeLessThan(230);
+  await card.getByRole("button", { name: "Show more" }).click();
+  expect((await card.boundingBox())!.height).toBeGreaterThan(230);
+
+  await card.hover();
+  await page.waitForTimeout(300);
+  await expect(page.getByRole("button", { name: "React ❤️" })).toHaveCount(0);
+
+  expect(await cardBg(pink)).not.toBe(greenBg);
+});

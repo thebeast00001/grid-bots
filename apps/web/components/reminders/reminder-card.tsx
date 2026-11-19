@@ -25,6 +25,29 @@ function Shell({ testId, muted, children }: { testId: string; muted?: boolean; c
   );
 }
 
+/** The reminder's text, three lines at most until you ask for the rest. */
+function Title({ text, className }: { text: string; className: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [long, setLong] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (el && !open) setLong(el.scrollHeight > el.clientHeight + 1);
+  }, [text, open]);
+  return (
+    <>
+      <div ref={ref} className={`break-words ${open ? "" : "line-clamp-3"} ${className}`}>
+        {text}
+      </div>
+      {(long || open) && (
+        <button onClick={() => setOpen((o) => !o)} className="press mt-0.5 text-[12px] font-medium text-[var(--text-2)] underline-offset-2 hover:underline">
+          {open ? "Show less" : "Show more"}
+        </button>
+      )}
+    </>
+  );
+}
+
 function Icon({ ringing = false }: { ringing?: boolean }) {
   const reduce = useReducedMotion();
   return (
@@ -105,7 +128,7 @@ export function ReminderSetCard({ botId, reminder }: { botId: string; reminder: 
       <div className="flex items-start gap-2.5">
         <Icon />
         <div className="min-w-0 flex-1">
-          <div className={`break-words text-[14.5px] font-semibold leading-snug ${cancelled ? "line-through decoration-[var(--text-3)]" : ""}`}>{r.text}</div>
+          <Title text={r.text} className={`text-[14.5px] font-semibold leading-snug ${cancelled ? "line-through decoration-[var(--text-3)]" : ""}`} />
           <div className="tnum mt-0.5 text-[12.5px] text-[var(--text-2)]">
             {cancelled ? "Cancelled" : upcoming ? `${when(r.dueAt, now)} · ${relative(new Date(r.dueAt), now)}` : `Went off ${when(r.firedAt ?? r.dueAt, now)}`}
           </div>
@@ -181,9 +204,13 @@ export function ReminderDueCard({ botId, messageId, data, occurrence, fresh }: {
       <div className="flex items-start gap-2.5">
         <Icon ringing={fresh && !state} />
         <div className="min-w-0 flex-1">
-          <div className="break-words text-[15px] font-semibold leading-snug">{data.text}</div>
+          <Title text={data.text} className="text-[15px] font-semibold leading-snug" />
           <div className="tnum mt-0.5 text-[12.5px] text-[var(--text-2)]">
-            {data.late ? `Late · was due ${when(data.dueAt, now)} (Grid wasn't running)` : `Due ${when(data.dueAt, now)}`}
+            {state?.state === "snoozed"
+              ? `Snoozed until ${when(state.until, now)}`
+              : data.late
+                ? `Late · was due ${when(data.dueAt, now)} (Grid wasn't running)`
+                : `Due ${when(data.dueAt, now)}`}
           </div>
         </div>
       </div>
@@ -194,7 +221,6 @@ export function ReminderDueCard({ botId, messageId, data, occurrence, fresh }: {
           </span>
         ) : (
           <>
-            {state?.state === "snoozed" && <span className="tnum mr-auto text-[12.5px] text-[var(--text-2)]">Snoozed until {when(state.until, now)}</span>}
             <button
               onClick={() => act({ action: "done" })}
               className="press inline-flex items-center gap-1 rounded-full px-3 py-1 text-[12.5px] font-semibold"

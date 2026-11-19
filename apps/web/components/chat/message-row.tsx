@@ -103,7 +103,7 @@ export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, ani
         onPointerCancel={() => clearTimeout(press.current)}
       >
         <AnimatePresence>
-          {toolbar && !editing && !streaming && (
+          {toolbar && !editing && !streaming && !isReminder && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 4 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

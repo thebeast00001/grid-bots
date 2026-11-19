@@ -18,10 +18,34 @@ const DEFAULT_HOUR = 9;
 
 const inZone = (d: Date, zone: string) => DateTime.fromJSDate(d, { zone });
 
+/** "the 1st", "on the 25th": a day of the month without a month name (chrono skips these). */
+const DAY_OF_MONTH = /\b(?:on\s+)?the\s+(\d{1,2})(?:st|nd|rd|th)\b/i;
+const MONTH_NAME = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\b/i;
+
+/** The next time it's that day of the month (clamped to short months), at the time said or 9 AM. */
+function dayOfMonth(day: number, t: string, ref: DateTime, now: Date): Parsed {
+  if (day < 1 || day > 31) return { error: "unclear" };
+  const rest = t.replace(DAY_OF_MONTH, " ");
+  const [r] = chrono.parse(rest, { instant: now, timezone: ref.offset }, { forwardDate: true });
+  const hourSaid = !!r?.start.isCertain("hour");
+  let hour = hourSaid ? r!.start.get("hour")! : DEFAULT_HOUR;
+  if (hourSaid && !r!.start.isCertain("meridiem") && hour >= 1 && hour <= 6) hour += 12;
+  const minute = hourSaid ? (r!.start.get("minute") ?? 0) : 0;
+  let month = ref.startOf("month");
+  for (let i = 0; i < 3; i++) {
+    const at = month.set({ day: Math.min(day, month.daysInMonth ?? 28), hour, minute, second: 0, millisecond: 0 });
+    if (at > ref) return { at: at.toJSDate(), timeGuessed: !hourSaid };
+    month = month.plus({ months: 1 });
+  }
+  return { error: "unclear" };
+}
+
 export function parseWhen(text: string, { now, zone }: Ctx): Parsed {
   const t = text.trim();
   if (!t) return { error: "unclear" };
   const ref = inZone(now, zone);
+  const dom = DAY_OF_MONTH.exec(t);
+  if (dom && !MONTH_NAME.test(t)) return dayOfMonth(Number(dom[1]), t, ref, now);
   const [r] = chrono.parse(t, { instant: now, timezone: ref.offset }, { forwardDate: true });
   if (!r) return { error: "unclear" };
   const s = r.start;

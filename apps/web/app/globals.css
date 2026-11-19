@@ -221,3 +221,12 @@ body { overflow: hidden; }
   .crit *, .tok { animation: none !important; }
   .press:active { transform: none; }
 }
+
+/* Show one of two elements by the theme in effect, without reading it in JavaScript (keeps SSR and the browser in step). */
+.when-dark { display: none; }
+:root[data-theme="dark"] .when-dark { display: block; }
+:root[data-theme="dark"] .when-light { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .when-dark { display: block; }
+  :root:not([data-theme="light"]) .when-light { display: none; }
+}

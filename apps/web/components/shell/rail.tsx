@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Cpu, Home, Moon, Sun } from "lucide-react";
@@ -34,16 +34,15 @@ function readTheme(): "light" | "dark" | null {
 
 export function Rail() {
   const pathname = usePathname();
-  const [theme, setTheme] = useState<"light" | "dark" | null>(null);
-
   useEffect(() => {
     const t = readTheme();
     if (t) document.documentElement.dataset.theme = t;
-    setTheme(t);
   }, []);
 
-  const dark = theme ? theme === "dark" : typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  // Read at click time: the icon itself is chosen by CSS, so server and browser render the same markup.
   const toggle = () => {
+    const set = document.documentElement.dataset.theme;
+    const dark = set ? set === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
     const next = dark ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     try {
@@ -51,7 +50,6 @@ export function Rail() {
     } catch {
       // Private mode: the choice lasts for this visit only.
     }
-    setTheme(next);
   };
 
   const items = [
@@ -77,7 +75,8 @@ export function Rail() {
       ))}
       <div className="flex-1" />
       <button onClick={toggle} title="Theme" aria-label="Toggle theme" className="press hover-surface grid size-10 place-items-center rounded-xl text-[var(--text-3)]">
-        {dark ? <Sun size={18} /> : <Moon size={18} />}
+        <Sun size={18} className="when-dark" />
+        <Moon size={18} className="when-light" />
       </button>
     </nav>
   );

@@ -38,6 +38,10 @@ export function botVars(colorIndex: number): React.CSSProperties {
     ["--bot" as string]: ok(s),
     ["--bot-strong" as string]: ok(s, -0.08),
     ["--bot-ink" as string]: s.ink === "light" ? "#ffffff" : "#17151a",
+    // Set here too: a custom property that mixes var(--bot) is resolved where it's defined (:root),
+    // so it would keep the default colour inside a bot's own colour scope.
+    ["--bot-soft" as string]: `color-mix(in oklch, ${ok(s)} 13%, var(--surface))`,
+    ["--bot-edge" as string]: `color-mix(in oklch, ${ok(s)} 35%, transparent)`,
   };
 }
 
