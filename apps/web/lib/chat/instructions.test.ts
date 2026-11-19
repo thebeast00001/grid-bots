@@ -22,6 +22,7 @@ const bot: Bot = {
   soul: "# Maya\n\n## Personality\nCalm and dry.",
   interview: "done",
   model: null,
+  mutedUntil: null,
   instructions: ["Always cc Priya"],
   createdAt: "",
   updatedAt: "",

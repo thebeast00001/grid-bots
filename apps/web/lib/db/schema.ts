@@ -31,6 +31,8 @@ export const bots = pgTable("bots", {
   interview: text("interview").$type<"pending" | "done" | "skipped">().notNull().default("pending"),
   model: jsonb("model").$type<ModelRef | null>(),
   instructions: jsonb("instructions").$type<string[]>().notNull().default([]),
+  /** Notifications from this bot are held (not pinged) until then; year 9999 = until turned back on. */
+  mutedUntil: timestamp("muted_until", { withTimezone: true, mode: "string" }),
   createdAt: createdAt(),
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
 });
@@ -137,7 +139,29 @@ export const routineRuns = pgTable(
   ],
 );
 
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: text("id").primaryKey(),
+    botId: text("bot_id")
+      .notNull()
+      .references(() => bots.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<"reminder" | "routine" | "routine-failed">().notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    messageId: text("message_id"),
+    importance: text("importance").$type<"high" | "normal" | "low">().notNull().default("normal"),
+    /** Whether it pinged you (toast / system notification / push), and if not, why. */
+    ping: boolean("ping").notNull(),
+    reason: text("reason").$type<"muted" | "quiet-hours" | "not-important">(),
+    createdAt: instant("created_at").notNull().defaultNow(),
+    readAt: instant("read_at"),
+  },
+  (t) => [index("notifications_created_idx").on(t.createdAt), index("notifications_unread_idx").on(t.botId, t.readAt)],
+);
+
 export type Memory = typeof memories.$inferSelect;
+export type NotificationRow = typeof notifications.$inferSelect;
 export type RoutineRow = typeof routines.$inferSelect;
 export type RunRow = typeof routineRuns.$inferSelect;
 export type ReminderRow = typeof reminders.$inferSelect;

@@ -4,6 +4,7 @@ import { getBot, touchBot } from "../bots/repo";
 import { getDb } from "../db/client";
 import { messages, reminders } from "../db/schema";
 import { publish } from "../events";
+import { notify } from "../notifications/repo";
 import { userZone } from "../settings";
 import { nextOccurrence } from "./when";
 
@@ -49,6 +50,7 @@ export async function deliverDue(now: Date): Promise<number> {
         .where(eq(reminders.id, r.id));
       await touchBot(r.botId);
       publish({ type: "message", botId: r.botId, messageId: id, title: bot.name, body: r.text });
+      await notify({ botId: r.botId, kind: "reminder", body: r.text, messageId: id });
       publish({ type: "reminders", botId: r.botId });
     } catch (e) {
       console.error(`[grid] couldn't deliver reminder ${r.id}:`, e);

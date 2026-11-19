@@ -11,6 +11,7 @@ import type { RunView } from "../client-types";
 import { getDb } from "../db/client";
 import { messages, routineRuns, routines, type RoutineRow } from "../db/schema";
 import { publish } from "../events";
+import { notify } from "../notifications/repo";
 import { HttpStatus, notFound } from "../http";
 import { listMemories } from "../memory/repo";
 import { toGridError, type GridModelError } from "../models/errors";
@@ -186,6 +187,7 @@ async function finishRun(r: RoutineRow, runId: string, lateRun: boolean, fallbac
   if (saved) {
     const bot = await getBot(r.botId);
     publish({ type: "message", botId: r.botId, messageId, title: bot?.name, body: status === "done" ? r.name : `${r.name} couldn't run` });
+    await notify({ botId: r.botId, kind: status === "done" ? "routine" : "routine-failed", body: status === "done" ? r.name : `${r.name} couldn't run`, messageId }).catch(() => {});
   }
   publish({ type: "run", botId: r.botId, routineId: r.id, runId, name: r.name, status });
   publish({ type: "routines", botId: r.botId });

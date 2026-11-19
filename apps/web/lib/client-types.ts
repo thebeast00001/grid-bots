@@ -35,6 +35,22 @@ export type BotView = {
 
 export type ApiErrorBody = { error?: { code: string; message: string; action?: { label: string; href: string } } };
 
+export type NotificationView = {
+  id: string;
+  botId: string;
+  kind: "reminder" | "routine" | "routine-failed";
+  /** The bot's name. */
+  title: string;
+  body: string;
+  messageId: string | null;
+  importance: "high" | "normal" | "low";
+  /** Whether it pinged you; if not, why it waited in the inbox. */
+  ping: boolean;
+  reason: "muted" | "quiet-hours" | "not-important" | null;
+  createdAt: string;
+  readAt: string | null;
+};
+
 export type RoutineView = {
   id: string;
   botId: string;

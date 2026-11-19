@@ -16,6 +16,7 @@ const bot: Bot = {
   soul: "",
   interview: "pending",
   model: null,
+  mutedUntil: null,
   instructions: ["Always cc Priya"],
   createdAt: "2026-11-18T00:00:00Z",
   updatedAt: "2026-11-18T00:00:00Z",

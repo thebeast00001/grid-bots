@@ -105,14 +105,14 @@ test("a routine deleted just as its run starts is reported as not found, not as 
   expect(["ran", "not-found"]).toContain(await outcome);
 });
 
-test("runs publish running, then the message, then done", async () => {
+test("runs publish running, then the message and its notification, then done", async () => {
   await connectMock();
   const { bot, routine } = await routineFor("Herald");
   const seen: GridEvent[] = [];
   const off = subscribe((e) => e.type !== "routines" && seen.push(e));
   const run = await runRoutine(routine.id, "manual");
   off();
-  expect(seen.map((e) => (e.type === "run" ? `run:${e.status}` : e.type))).toEqual(["run:running", "message", "run:done"]);
+  expect(seen.map((e) => (e.type === "run" ? `run:${e.status}` : e.type))).toEqual(["run:running", "message", "notification", "run:done"]);
   expect(seen[1]).toMatchObject({ type: "message", botId: bot.id, messageId: run.messageId, title: "Herald", body: "Morning briefing" });
 });
 

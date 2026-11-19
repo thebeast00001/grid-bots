@@ -82,6 +82,7 @@ export function LiveEvents() {
         refreshRoutines(e.botId).catch(() => {});
         return;
       }
+      if (e.type === "notification") return;
       if (e.type === "run") {
         // The open chat shows this itself; the list shows it for every other bot.
         if (where.current !== `/bots/${e.botId}`) setBotStatus(e.botId, e.status === "running" ? { pose: "working", text: `Working on ${e.name}…` } : { pose: "idle", text: "" });

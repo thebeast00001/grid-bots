@@ -12,6 +12,7 @@ const bot: Bot = {
   soul: "",
   interview: "pending",
   model: null,
+  mutedUntil: null,
   instructions: [],
   createdAt: "",
   updatedAt: "",

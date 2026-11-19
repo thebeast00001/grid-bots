@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import type { NotificationView } from "./client-types";
 
 /**
  * Things the open app should hear about without asking: a bot wrote a message on its
@@ -9,6 +10,7 @@ export type GridEvent =
   | { type: "message"; botId: string; messageId: string; title?: string; body?: string }
   | { type: "reminders"; botId: string }
   | { type: "routines"; botId: string }
+  | { type: "notification"; notification: NotificationView }
   | { type: "run"; botId: string; routineId: string; runId: string; name: string; status: "running" | "done" | "failed" };
 
 const g = globalThis as unknown as { __gridBus?: EventEmitter };
