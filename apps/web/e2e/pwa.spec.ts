@@ -12,6 +12,15 @@ test("manifest is served and valid", async ({ request }) => {
   for (const icon of m.icons) expect((await request.get(icon.src)).ok()).toBe(true);
 });
 
+test("pages declare a tab icon and a home-screen icon that load", async ({ page, request }) => {
+  await page.goto("/welcome");
+  for (const rel of ["icon", "apple-touch-icon"]) {
+    const link = page.locator(`head link[rel="${rel}"]`).first();
+    await expect(link, rel).toHaveAttribute("href", /.+/);
+    expect((await request.get((await link.getAttribute("href"))!)).ok(), rel).toBe(true);
+  }
+});
+
 test("service worker and offline page are served", async ({ request }) => {
   const sw = await request.get("/sw.js");
   expect(sw.ok()).toBe(true);
