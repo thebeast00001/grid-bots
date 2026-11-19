@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ExternalLink, KeyRound, Laptop, Loader2, Sparkles } from "lucide-react";
 import { ApiError, api } from "@/lib/api-client";
@@ -22,12 +22,10 @@ export function ConnectModel({ onConnected, compact = false }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [waitingChatgpt, setWaitingChatgpt] = useState(false);
-  const firstOpen = useRef(true);
 
   useEffect(() => {
     api<{ kinds: KindView[] }>("/api/providers").then((r) => setKinds(r.kinds)).catch(() => {});
     api<{ ollama: boolean; lmstudio: boolean }>("/api/providers/detect").then(setLocal).catch(() => setLocal({ ollama: false, lmstudio: false }));
-    firstOpen.current = false;
   }, []);
 
   // While the ChatGPT tab is open, watch for the new connection.
@@ -70,8 +68,13 @@ export function ConnectModel({ onConnected, compact = false }: Props) {
     }
   };
 
-  const enter = (i: number) =>
-    firstOpen.current ? { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.3, ease: ease.out, delay: i * 0.04 } } : {};
+  // Same props on every render: Motion runs the entrance once, on mount. (Dropping them on a
+  // later render froze the cards mid-fade.)
+  const enter = (i: number) => ({
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.3, ease: ease.out, delay: i * 0.04 },
+  });
 
   return (
     <div className="flex flex-col gap-3">
@@ -190,7 +193,7 @@ function KeyForm({ kinds, busy, onSubmit }: { kinds: KindView[]; busy: boolean; 
       <div className="mb-3 text-[15px] font-semibold">Paste an API key</div>
       <label className="mb-2 block">
         <span className="mb-1 block text-[12.5px] text-[var(--text-2)]">Provider</span>
-        <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} className="h-10 w-full rounded-xl bg-[var(--surface-2)] px-3 text-[14px] outline-none">
+        <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} className="field h-10 w-full rounded-xl bg-[var(--surface-2)] px-3 text-[14px] outline-none">
           {options.map((k) => (
             <option key={k.kind} value={k.kind}>
               {k.label}
@@ -202,7 +205,7 @@ function KeyForm({ kinds, busy, onSubmit }: { kinds: KindView[]; busy: boolean; 
       {kind === "custom" && (
         <label className="mb-2 block">
           <span className="mb-1 block text-[12.5px] text-[var(--text-2)]">Server address</span>
-          <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="http://127.0.0.1:8000/v1" className="h-10 w-full rounded-xl bg-[var(--surface-2)] px-3 text-[14px] outline-none" />
+          <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="http://127.0.0.1:8000/v1" className="field h-10 w-full rounded-xl bg-[var(--surface-2)] px-3 text-[14px] outline-none" />
         </label>
       )}
       {needsKey && (
@@ -221,7 +224,7 @@ function KeyForm({ kinds, busy, onSubmit }: { kinds: KindView[]; busy: boolean; 
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder={kind === "custom" ? "Optional" : "Paste it here"}
-            className="h-10 w-full rounded-xl bg-[var(--surface-2)] px-3 text-[14px] outline-none"
+            className="field h-10 w-full rounded-xl bg-[var(--surface-2)] px-3 text-[14px] outline-none"
           />
         </label>
       )}

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "streamdown/styles.css";
 import "./globals.css";
+import { MotionPrefs } from "@/components/motion-prefs";
 import { PwaRegister } from "@/components/pwa-register";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -22,7 +23,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body>
-        {children}
+        <MotionPrefs>{children}</MotionPrefs>
         <PwaRegister />
       </body>
     </html>

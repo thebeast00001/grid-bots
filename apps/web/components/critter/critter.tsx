@@ -197,7 +197,13 @@ export function Critter({
     window.setTimeout(() => setPetting(false), 900);
   };
 
-  const delay = useMemo(() => -(Math.random() * 3.6), []);
+  // Offsets the idle bob so critters side by side don't move in lockstep. Derived from
+  // useId (same on server and client) rather than Math.random, which broke hydration.
+  const delay = useMemo(() => {
+    let h = 0;
+    for (const ch of uid) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return -((h % 360) / 100);
+  }, [uid]);
 
   const s = PALETTE[cfg.color] ?? PALETTE[0];
   const base = PALETTE[baseColor] ?? s;

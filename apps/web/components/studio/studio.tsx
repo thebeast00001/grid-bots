@@ -330,7 +330,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex items-center gap-3 rounded-2xl bg-[var(--surface)] px-4 py-3 edge focus-within:shadow-[0_0_0_2px_var(--bot)]">
+    <label className="flex items-center gap-3 rounded-2xl bg-[var(--surface)] px-4 py-3 edge field">
       <span className="w-11 shrink-0 text-[13px] text-[var(--text-3)]">{label}</span>
       {children}
     </label>

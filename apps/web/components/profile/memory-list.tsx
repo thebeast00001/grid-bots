@@ -80,7 +80,7 @@ export function MemoryList({ bot, version }: { bot: BotView; version: number }) 
         ))}
       </div>
 
-      <label className="mb-2 flex h-9 items-center gap-2 rounded-xl bg-[var(--surface-2)] px-3 text-[var(--text-3)]">
+      <label className="field mb-2 flex h-9 items-center gap-2 rounded-xl bg-[var(--surface-2)] px-3 text-[var(--text-3)]">
         <Search size={14} />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search memories" aria-label="Search memories" className="w-full bg-transparent text-[13.5px] text-[var(--text)] outline-none placeholder:text-[var(--text-3)]" />
       </label>
@@ -127,7 +127,7 @@ export function MemoryList({ bot, version }: { bot: BotView; version: number }) 
         placeholder={scope === "you" ? "Add something about you" : "Add a note"}
         aria-label={scope === "you" ? "Add something about you" : "Add a note"}
         maxLength={1000}
-        className="mt-2 h-9 w-full rounded-xl bg-[var(--surface-2)] px-3 text-[13.5px] outline-none placeholder:text-[var(--text-3)]"
+        className="field mt-2 h-9 w-full rounded-xl bg-[var(--surface-2)] px-3 text-[13.5px] outline-none placeholder:text-[var(--text-3)]"
       />
     </section>
   );
@@ -163,7 +163,7 @@ function EditableText({ value, onSave }: { value: string; onSave: (v: string) =>
           setEditing(false);
         }
       }}
-      className="w-full rounded-md bg-[var(--surface-2)] px-1.5 py-0.5 text-[13.5px] outline-none"
+      className="field w-full rounded-md bg-[var(--surface-2)] px-1.5 py-0.5 text-[13.5px] outline-none"
     />
   );
 }

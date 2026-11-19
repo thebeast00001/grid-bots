@@ -53,7 +53,7 @@ export function ProfilePanel({ bot, onClose, children }: { bot: BotView; onClose
           onBlur={() => job.trim() !== bot.job && patch({ job: job.trim() })}
           onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
           placeholder="What should it take care of?"
-          className="h-10 w-full rounded-xl bg-[var(--surface-2)] px-3 text-[14px] outline-none placeholder:text-[var(--text-3)]"
+          className="field h-10 w-full rounded-xl bg-[var(--surface-2)] px-3 text-[14px] outline-none placeholder:text-[var(--text-3)]"
         />
       </label>
 
@@ -73,7 +73,7 @@ export function ProfilePanel({ bot, onClose, children }: { bot: BotView; onClose
               value={soul}
               onChange={(e) => setSoul(e.target.value)}
               rows={14}
-              className="w-full resize-y rounded-xl bg-[var(--surface-2)] p-3 font-mono text-[12.5px] leading-relaxed outline-none"
+              className="field w-full resize-y rounded-xl bg-[var(--surface-2)] p-3 font-mono text-[12.5px] leading-relaxed outline-none"
             />
             <div className="mt-2 flex justify-end gap-2">
               <button onClick={() => setEditingSoul(false)} className="press hover-surface rounded-full px-3 py-1.5 text-[13px] text-[var(--text-2)]">

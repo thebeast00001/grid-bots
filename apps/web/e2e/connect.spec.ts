@@ -41,3 +41,21 @@ test("ChatGPT connection shows the plan modal once", async ({ page }) => {
   await page.reload();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("welcome choices finish fading in even when the provider list arrives mid-animation", async ({ page }) => {
+  // Answer instantly so the re-render lands while the cards are still fading in.
+  await page.route("**/api/providers/detect", (r) => r.fulfill({ json: { ollama: false, lmstudio: false } }));
+  await page.goto("/welcome");
+  for (const name of ["Continue with ChatGPT", "Check again", "Paste an API key"]) {
+    const el = page.getByRole("button", { name });
+    await expect
+      .poll(() =>
+        el.evaluate((node) => {
+          let o = 1;
+          for (let n: Element | null = node; n; n = n.parentElement) o *= Number(getComputedStyle(n).opacity);
+          return o;
+        }),
+      )
+      .toBe(1);
+  }
+});

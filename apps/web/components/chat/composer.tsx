@@ -117,7 +117,7 @@ export function Composer(p: Props) {
           </p>
         )}
 
-        <div className="rounded-[26px] bg-[var(--surface)] p-1.5 edge focus-within:shadow-[0_0_0_1.5px_var(--bot-edge)]">
+        <div data-testid="composer-box" className="rounded-[26px] bg-[var(--surface)] p-1.5 edge field">
           {files.length > 0 && (
             <div className="flex flex-wrap gap-2 px-1.5 pb-1.5 pt-1">
               {files.map((f, i) => (

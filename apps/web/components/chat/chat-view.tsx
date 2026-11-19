@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
@@ -49,7 +49,8 @@ function botReactions(messages: UIMessage[]): Map<string, string> {
   return out;
 }
 
-type SoulNote = "wrote" | "starter" | null;
+/** The "wrote their soul" card, anchored after the message that was last when it happened. */
+type SoulNote = { kind: "wrote" | "starter"; after: string | null } | null;
 
 export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initial: UIMessage[]; mobile?: boolean }) {
   const { upsert, refresh } = useBots();
@@ -90,9 +91,10 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
   const finishInterview = async (skip: boolean) => {
     if (writing) return;
     setWriting(true);
+    const after = visible.at(-1)?.id ?? null;
     try {
       upsert(await api<BotView>(`/api/bots/${bot.id}/soul`, { method: "POST", body: JSON.stringify({ skip }) }));
-      setSoulNote(skip ? "starter" : "wrote");
+      setSoulNote({ kind: skip ? "starter" : "wrote", after });
     } catch {
       toast(`${bot.name} couldn't write their soul. Try again from the profile.`);
     } finally {
@@ -137,6 +139,27 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
   // ── scrolling: stick to the bottom unless the reader scrolled up ───
   const scroller = useRef<HTMLDivElement>(null);
   const stuck = useRef(true);
+  // Rendered after the message that was last when the soul was written (see SoulNote).
+  const soulCard = () =>
+    soulNote && (
+      <motion.div
+        initial={{ opacity: 0, y: 8, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={spring.smooth}
+        className="my-5 flex items-center gap-3 self-center rounded-[20px] bg-[var(--surface)] py-2.5 pl-3 pr-2 text-[14px] edge"
+      >
+        <Sparkles size={16} style={{ color: "var(--bot-strong)" }} />
+        <span>{soulNote.kind === "wrote" ? `${bot.name} wrote their soul` : `${bot.name} wrote a starter soul`}</span>
+        <button
+          onClick={() => setPanelOpen(true)}
+          className="press rounded-full px-3 py-1.5 text-[13px] font-semibold"
+          style={{ background: "var(--bot)", color: "var(--bot-ink)" }}
+        >
+          View soul
+        </button>
+      </motion.div>
+    );
+
   const lastLen = useRef(visible.length);
   const [unseen, setUnseen] = useState(0);
   useLayoutEffect(() => {
@@ -240,51 +263,34 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
           <div ref={scroller} onScroll={onScroll} className="fade-top thin-scroll absolute inset-0 overflow-y-auto px-3 pb-4 md:px-6" style={{ paddingTop: mobile ? 156 : 178 }}>
             <div className="mx-auto flex max-w-[680px] flex-col">
               {visible.length === 0 && !interviewing && <div className="py-10 text-center text-[13px] text-[var(--text-3)]">Say hi to {bot.name}.</div>}
+              {soulNote?.after === null && soulCard()}
               {visible.map((m, i) => {
                 const mine = m.role === "user";
                 const readAt = (m.metadata as { readAt?: string } | undefined)?.readAt;
                 return (
-                  <MessageRow
-                    key={m.id}
-                    m={m}
-                    firstOfGroup={visible[i - 1]?.role !== m.role}
-                    lastOfGroup={visible[i + 1]?.role !== m.role}
-                    streaming={status === "streaming" && i === visible.length - 1 && !mine}
-                    animateIn={i >= firstNew}
-                    botReaction={reactions.get(m.id)}
-                    readLabel={i === lastUserIdx && seen ? (readAt ? `Read ${new Date(readAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Read") : undefined}
-                    actions={{
-                      onReact: (e) => react(m, e),
-                      onReply: () => setQuote(textOf(m).slice(0, 280)),
-                      onPin: mine ? () => pin(m) : undefined,
-                      onRemember: mine ? () => remember(m) : undefined,
-                      onEdit: mine && !busy ? (text) => void sendMessage({ text, messageId: m.id }) : undefined,
-                      onRegenerate: !mine && i === lastBotIdx && !busy ? () => void regenerate() : undefined,
-                    }}
-                  />
+                  <Fragment key={m.id}>
+                    <MessageRow
+                      m={m}
+                      firstOfGroup={visible[i - 1]?.role !== m.role}
+                      lastOfGroup={visible[i + 1]?.role !== m.role}
+                      streaming={status === "streaming" && i === visible.length - 1 && !mine}
+                      animateIn={i >= firstNew}
+                      botReaction={reactions.get(m.id)}
+                      readLabel={i === lastUserIdx && seen ? (readAt ? `Read ${new Date(readAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Read") : undefined}
+                      actions={{
+                        onReact: (e) => react(m, e),
+                        onReply: () => setQuote(textOf(m).slice(0, 280)),
+                        onPin: mine ? () => pin(m) : undefined,
+                        onRemember: mine ? () => remember(m) : undefined,
+                        onEdit: mine && !busy ? (text) => void sendMessage({ text, messageId: m.id }) : undefined,
+                        onRegenerate: !mine && i === lastBotIdx && !busy ? () => void regenerate() : undefined,
+                      }}
+                    />
+                    {soulNote?.after === m.id && soulCard()}
+                  </Fragment>
                 );
               })}
 
-              <AnimatePresence>
-                {soulNote && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={spring.smooth}
-                    className="mt-5 flex items-center gap-3 self-center rounded-[20px] bg-[var(--surface)] py-2.5 pl-3 pr-2 text-[14px] edge"
-                  >
-                    <Sparkles size={16} style={{ color: "var(--bot-strong)" }} />
-                    <span>{soulNote === "wrote" ? `${bot.name} wrote their soul` : `${bot.name} wrote a starter soul`}</span>
-                    <button
-                      onClick={() => setPanelOpen(true)}
-                      className="press rounded-full px-3 py-1.5 text-[13px] font-semibold"
-                      style={{ background: "var(--bot)", color: "var(--bot-ink)" }}
-                    >
-                      View soul
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               <AnimatePresence>
                 {chatError && (

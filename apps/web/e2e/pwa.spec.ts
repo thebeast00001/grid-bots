@@ -36,6 +36,8 @@ test.describe("phone", () => {
 
     await page.getByRole("link", { name: "Back" }).click();
     await expect(page).toHaveURL(/\/bots$/);
+    // One "New bot" button on the list screen (the header's), not two.
+    await expect(page.getByRole("link", { name: "New bot" })).toHaveCount(1);
     await page.getByRole("link", { name: /Pocket/ }).first().click();
     await expect(page).toHaveURL(new RegExp(`/bots/${id}$`));
 

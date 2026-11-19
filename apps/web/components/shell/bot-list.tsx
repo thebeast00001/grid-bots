@@ -48,6 +48,7 @@ function Row({ bot, active, size }: { bot: BotView; active: boolean; size: numbe
   );
 }
 
+/** `compact`: the phone list screen (bigger rows, no New bot button of its own). */
 export function BotList({ compact = false }: { compact?: boolean }) {
   const { bots } = useBots();
   const pathname = usePathname();
@@ -57,7 +58,7 @@ export function BotList({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 px-3 pb-2 pt-3">
-        <label className="flex h-9 flex-1 items-center gap-2 rounded-xl bg-[var(--surface-2)] px-3 text-[var(--text-3)]">
+        <label className="field flex h-9 flex-1 items-center gap-2 rounded-xl bg-[var(--surface-2)] px-3 text-[var(--text-3)]">
           <Search size={15} />
           <input
             value={q}
@@ -67,9 +68,12 @@ export function BotList({ compact = false }: { compact?: boolean }) {
             className="w-full bg-transparent text-[14px] text-[var(--text)] outline-none placeholder:text-[var(--text-3)]"
           />
         </label>
-        <Link href="/new" className="press hover-surface grid size-9 place-items-center rounded-xl" aria-label="New bot" title="New bot">
-          <Plus size={19} />
-        </Link>
+        {/* On phones the list screen's header already has one. */}
+        {!compact && (
+          <Link href="/new" className="press hover-surface grid size-9 place-items-center rounded-xl" aria-label="New bot" title="New bot">
+            <Plus size={19} />
+          </Link>
+        )}
       </div>
       <div className="thin-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {bots !== null && bots.length === 0 && (

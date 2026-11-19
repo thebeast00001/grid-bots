@@ -53,7 +53,7 @@ export function ModelPicker({
           const [providerId, modelId] = e.target.value.split("::");
           onChange(providerId && modelId ? { providerId, modelId } : null);
         }}
-        className="h-10 w-full rounded-xl bg-[var(--surface-2)] px-3 text-[14px] outline-none"
+        className="field h-10 w-full rounded-xl bg-[var(--surface-2)] px-3 text-[14px] outline-none"
       >
         {groups === null && <option value={value ? encode(value) : ""}>Loading models…</option>}
         {allowDefault && <option value="">Use the default model</option>}

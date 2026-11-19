@@ -197,7 +197,7 @@ function ToolButton({ label, onClick, children }: { label: string; onClick: () =
 function EditBox({ initial, onSave, onCancel }: { initial: string; onSave: (t: string) => void; onCancel: () => void }) {
   const [value, setValue] = useState(initial);
   return (
-    <div className="w-[min(480px,80vw)] rounded-[20px] bg-[var(--surface)] p-2 edge">
+    <div className="field w-[min(480px,80vw)] rounded-[20px] bg-[var(--surface)] p-2 edge">
       <textarea
         aria-label="Edit message"
         autoFocus

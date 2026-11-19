@@ -54,3 +54,23 @@ test("profile edits the job and removes a standing instruction", async ({ page }
   await expect.poll(async () => (await (await page.request.get(`/api/bots/${id}`)).json()).instructions).toEqual(["Use metric"]);
   await expect.poll(async () => (await (await page.request.get(`/api/bots/${id}`)).json()).job).toBe("Plans my trips");
 });
+
+test("the soul card stays where the soul was written as the chat goes on", async ({ page }) => {
+  await connectMock(page);
+  const id = await makeBot(page, "Anchor");
+  await page.goto(`/bots/${id}`);
+  const replies = page.getByTestId("bot-message");
+  await expect(replies.filter({ hasText: "Question 1" })).toBeVisible();
+  await page.getByRole("button", { name: "Skip interview" }).click();
+  const card = page.getByText("Anchor wrote a starter soul");
+  await expect(card).toBeVisible();
+
+  const box = page.getByPlaceholder("Message Anchor");
+  await box.fill("hello again");
+  await box.press("Enter");
+  const later = replies.filter({ hasText: "You said: hello again" });
+  await expect(later).toBeVisible();
+  // The later reply sits below the card, not above it.
+  const order = await card.evaluate((c, r) => c.compareDocumentPosition(r!) & Node.DOCUMENT_POSITION_FOLLOWING, await later.elementHandle());
+  expect(order).toBeTruthy();
+});
