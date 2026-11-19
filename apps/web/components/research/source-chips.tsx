@@ -67,3 +67,19 @@ export function citeComponents(sources: Source[]): Components {
     },
   };
 }
+
+// One components object per distinct set of sources: Streamdown memoises each markdown block
+// by comparing its components, so a new object on every streamed chunk re-renders every block.
+const cache = new Map<string, Components>();
+
+export function citeComponentsFor(sources: Source[]): Components | undefined {
+  if (!sources.length) return undefined;
+  const key = sources.map((s) => `${s.n} ${s.url} ${s.title}`).join("\n");
+  let c = cache.get(key);
+  if (!c) {
+    c = citeComponents(sources);
+    if (cache.size >= 200) cache.delete(cache.keys().next().value as string);
+    cache.set(key, c);
+  }
+  return c;
+}

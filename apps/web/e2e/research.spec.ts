@@ -95,10 +95,17 @@ test("a page can't talk the bot into opening a made-up link", async ({ page }) =
 });
 
 test("Settings → Web: save Brave without ever showing the key, test a service, turn search off", async ({ page }) => {
+  // Any later load of the saved setting arrives late: it must not undo a pick made meanwhile.
+  let loads = 0;
+  await page.route("**/api/web", async (route) => {
+    if (route.request().method() === "GET" && ++loads > 1) await new Promise((r) => setTimeout(r, 1500));
+    await route.continue();
+  });
   await page.goto("/settings/web");
   await expect(page.getByRole("link", { name: "Notifications" })).toBeVisible();
   await page.getByRole("radio", { name: /Brave Search/ }).click();
-  await page.getByLabel("Brave Search key").fill("brave-key-SECRET-42");
+  await page.waitForTimeout(2000);
+  await page.getByLabel("Brave Search key").fill("brave-key-SECRET-42", { timeout: 5000 });
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Key saved")).toBeVisible();
   await page.reload();

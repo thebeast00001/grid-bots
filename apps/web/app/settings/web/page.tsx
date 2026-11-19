@@ -31,7 +31,15 @@ export default function WebSettings() {
     setKey("");
   };
   useEffect(() => {
-    api<State>("/api/web").then(load).catch(() => {});
+    // Only this effect's answer counts: a late one from an earlier run (React runs effects twice
+    // in development) would otherwise reset a choice made in the meantime.
+    let alive = true;
+    api<State>("/api/web")
+      .then((r) => alive && load(r))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const saved = s?.service ?? null;

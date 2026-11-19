@@ -7,7 +7,7 @@ import { BookmarkPlus, CornerUpLeft, FileText, Pencil, Pin, RotateCcw } from "lu
 import { Streamdown } from "streamdown";
 import { ReminderChip, ReminderDueCard, ReminderPending, ReminderSetCard, type DueData, type Occurrence } from "@/components/reminders/reminder-card";
 import { ResearchStrip } from "@/components/research/research-strip";
-import { SourceChips, citeComponents } from "@/components/research/source-chips";
+import { SourceChips, citeComponentsFor } from "@/components/research/source-chips";
 import { citeLinks, shownSources, sourcesOf } from "@/components/research/sources";
 import { RoutineChip, RoutineHeader, RoutinePending, RoutineSetCard, type RoutineData } from "@/components/routines/routine-card";
 import type { ReminderView, RoutineView } from "@/lib/client-types";
@@ -102,7 +102,7 @@ export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, ani
   const text = isReminder ? "" : textOf(m);
   // Research: numbered sources, citation links in the text, chips under it.
   const sources = useMemo(() => (mine ? [] : sourcesOf(m.parts)), [m.parts, mine]);
-  const components = useMemo(() => citeComponents(sources), [sources]);
+  const components = citeComponentsFor(sources);
   // Chips once there's an answer to go with them, not while the bot is still reading.
   const chips = sources.length && text ? shownSources(sources, text) : [];
   const fine = typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
