@@ -23,6 +23,8 @@ export function chatUIStream(o: {
     // something different from what the model was told, and models that bind their reasoning
     // to earlier messages (e.g. Claude with preserved thinking) reject it.
     redactToolErrors: false,
+    // A model's own web search reports its sources; they become the reply's source chips.
+    sendSources: true,
     onEnd: o.onEnd,
   });
 }

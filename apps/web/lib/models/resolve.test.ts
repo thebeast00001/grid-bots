@@ -2,6 +2,7 @@ import { streamText } from "ai";
 import { resetDbForTests } from "../db/client";
 import { deleteSetting, setSetting } from "../settings";
 import { useTempHome } from "../test-home";
+import { setSearchService } from "../web/search";
 import { addProvider } from "./providers-repo";
 import { resolveModel } from "./resolve";
 
@@ -30,4 +31,30 @@ test("with a model connected but no default, the error points to Settings, not C
   await deleteSetting("defaultModel");
   await expect(resolveModel(null)).rejects.toMatchObject({ code: "no-model", action: { href: "/settings/models" } });
   await expect(resolveModel({ providerId: "gone", modelId: "x" })).rejects.toMatchObject({ action: { href: "/settings/models" } });
+});
+
+describe("how the bot searches", () => {
+  afterEach(() => setSearchService(null));
+
+  test("a model without its own search: none until a search service is set, then Grid's", async () => {
+    const p = await addProvider({ kind: "mock" });
+    const ref = { providerId: p.id, modelId: "mock-chat" };
+    expect(await resolveModel(ref)).toMatchObject({ search: null });
+    await setSearchService({ kind: "test" });
+    expect(await resolveModel(ref)).toMatchObject({ search: "grid" });
+  });
+
+  test("ChatGPT searches on its own unless a search service is set", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ data: [] })));
+    const p = await addProvider({ kind: "chatgpt", secret: { access: "tok", refresh: "r", expiresAt: Date.now() + 3_600_000, clientId: "c", sub: "u" } });
+    vi.unstubAllGlobals();
+    const ref = { providerId: p.id, modelId: "gpt-5.5" };
+    const own = await resolveModel(ref);
+    expect(own.search).toBe("builtin");
+    expect(own.searchTool).toMatchObject({ type: "provider", id: "openai.web_search" });
+    await setSearchService({ kind: "test" });
+    const grid = await resolveModel(ref);
+    expect(grid.search).toBe("grid");
+    expect(grid.searchTool).toBeUndefined();
+  });
 });

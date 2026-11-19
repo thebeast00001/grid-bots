@@ -2,7 +2,7 @@ import type { UIMessage } from "ai";
 import { createBot } from "../bots/repo";
 import { resetDbForTests } from "../db/client";
 import { useTempHome } from "../test-home";
-import { applyIncoming, loadThread, saveAssistant, trimHistory } from "./history";
+import { applyIncoming, compactForStorage, forModel, loadThread, saveAssistant, trimHistory } from "./history";
 
 useTempHome();
 afterAll(() => resetDbForTests());
@@ -52,4 +52,31 @@ test("trimHistory keeps the newest messages within the budget", () => {
   const msgs = [user("1", "a".repeat(50)), bot("2", "b".repeat(50)), user("3", "c".repeat(50))];
   expect(trimHistory(msgs, 120).map((m) => m.id)).toEqual(["2", "3"]);
   expect(trimHistory(msgs, 10).map((m) => m.id)).toEqual(["3"]);
+});
+
+describe("research in history", () => {
+  const page = { ok: true, n: 1, url: "https://grid.test/guide", title: "Guide", site: "grid.test", text: "x".repeat(5000), truncated: false, links: [{ text: "P", url: "https://grid.test/pricing" }] };
+  const reply: UIMessage = {
+    id: "r1",
+    role: "assistant",
+    parts: [
+      { type: "tool-read_page", toolCallId: "c1", state: "output-available", input: { url: page.url }, output: page },
+      { type: "tool-web_search", toolCallId: "c2", state: "output-available", input: { query: "q" }, output: { ok: true, results: [] }, providerExecuted: true },
+      { type: "text", text: "Answer [1]." },
+    ] as UIMessage["parts"],
+  };
+
+  test("stored replies keep a page's address, title and links but not its text", () => {
+    const stored = compactForStorage(reply);
+    const p = stored.parts[0] as { output: Record<string, unknown> };
+    expect(p.output).toMatchObject({ ok: true, n: 1, url: page.url, title: "Guide", site: "grid.test", text: "", chars: 5000, links: page.links });
+    expect(stored.parts[2]).toEqual({ type: "text", text: "Answer [1]." });
+    expect((reply.parts[0] as { output: { text: string } }).output.text).toHaveLength(5000); // the original is untouched
+  });
+
+  test("the model gets earlier replies without page text or the provider's own search steps", () => {
+    const [m] = forModel([reply]);
+    expect(m.parts.map((p) => p.type)).toEqual(["tool-read_page", "text"]);
+    expect((m.parts[0] as { output: { text: string } }).output.text).toBe("");
+  });
 });

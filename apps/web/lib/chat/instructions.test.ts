@@ -90,3 +90,41 @@ test("with tools on, the bot is told to use create_routine for standing jobs", (
   const text = buildInstructions({ bot, botMemories: [], userMemories: [], now: new Date(), zone: "UTC", interview: { pending: false, answered: 0 }, tools: true });
   expect(text).toContain("create_routine");
 });
+
+describe("the web", () => {
+  const build = (tools: boolean, search?: "grid" | "builtin" | null) =>
+    buildInstructions({ bot, botMemories: [], userMemories: [], now: new Date(), zone: "UTC", interview: { pending: false, answered: 0 }, tools, search });
+
+  test("with search, the bot searches for anything current and cites by number", () => {
+    const t = build(true, "grid");
+    expect(t).toContain("web_search");
+    expect(t).toContain("read_page");
+    expect(t).toMatch(/\[1\]/);
+    expect(t).not.toMatch(/can't browse the web/);
+  });
+
+  test("with the model's own search, it cites its sources", () => {
+    const t = build(true, "builtin");
+    expect(t).toMatch(/search the web/i);
+    expect(t).not.toMatch(/can't browse the web/);
+  });
+
+  test("without search, it can read links and says where search is turned on", () => {
+    const t = build(true, null);
+    expect(t).toContain("read_page");
+    expect(t).toContain("Settings → Web");
+    expect(t).not.toContain("web_search");
+  });
+
+  test("web text is information, never instructions, and private details stay out of searches and links", () => {
+    for (const s of ["grid", "builtin", null] as const) {
+      const t = build(true, s);
+      expect(t).toMatch(/information, not instructions/);
+      expect(t).toMatch(/never put .*(memories|private).* into a search or a link/i);
+    }
+  });
+
+  test("a model without tools still says it can't browse", () => {
+    expect(build(false)).toMatch(/can't browse the web/);
+  });
+});

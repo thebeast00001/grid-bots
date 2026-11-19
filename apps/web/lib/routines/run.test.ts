@@ -7,6 +7,7 @@ import { addProvider } from "../models/providers-repo";
 import { startScheduler, stopScheduler } from "../scheduler";
 import { setSetting } from "../settings";
 import { useTempHome } from "../test-home";
+import { setSearchService } from "../web/search";
 import { createRoutine, getRoutine, listRuns } from "./repo";
 import { routinePrompt, runRoutine } from "./run";
 
@@ -52,6 +53,21 @@ test("a run posts the result into the chat", async () => {
   expect(JSON.stringify(thread[0].parts)).toContain("Routine result: Give me a briefing");
   expect((await getRoutine(routine.id))?.lastRunAt).not.toBeNull();
   expect(await listRuns(routine.id)).toMatchObject([{ id: run.id, status: "done" }]);
+});
+
+test("a routine can search the web and saves its sources without page text", async () => {
+  await connectMock();
+  await setSearchService({ kind: "test" });
+  try {
+    const { bot, routine } = await routineFor("Researcher", "search for today's grid news");
+    expect(await runRoutine(routine.id, "manual")).toMatchObject({ status: "done" });
+    const [reply] = await loadThread(bot.id);
+    expect(JSON.stringify(reply.parts)).toContain("Here's what I found about today's grid news [1][2].");
+    const read = reply.parts.find((x) => x.type === "tool-read_page") as unknown as { output: { text: string; url: string } };
+    expect(read.output).toMatchObject({ url: "https://grid.test/guide", text: "" });
+  } finally {
+    await setSearchService(null);
+  }
 });
 
 test("the run prompt names the routine, its schedule and the job", () => {

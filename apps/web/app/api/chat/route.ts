@@ -2,7 +2,7 @@ import { convertToModelMessages, createIdGenerator, createUIMessageStreamRespons
 import { z } from "zod";
 import { getBot } from "@/lib/bots/repo";
 import { inlineFileParts } from "@/lib/chat/files";
-import { START, applyIncoming, loadThread, saveAssistant, textOf, trimHistory } from "@/lib/chat/history";
+import { START, applyIncoming, compactForStorage, forModel, loadThread, saveAssistant, textOf, trimHistory } from "@/lib/chat/history";
 import { buildInstructions } from "@/lib/chat/instructions";
 import { makeTools } from "@/lib/chat/tools";
 import { chatUIStream } from "@/lib/chat/ui-stream";
@@ -10,6 +10,7 @@ import { errorResponse, notFound, readJson } from "@/lib/http";
 import { listMemories } from "@/lib/memory/repo";
 import { resolveModel } from "@/lib/models/resolve";
 import { userZone } from "@/lib/settings";
+import { makeWebTools } from "@/lib/web/tools";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -65,14 +66,23 @@ export async function POST(req: Request) {
       now: new Date(),
       interview: { pending: bot.interview === "pending", answered },
       tools: resolved.tools,
+      search: resolved.search,
     });
 
     const thread = trimHistory(history);
     const lastUser = [...thread].reverse().find((m) => m.role === "user");
-    const tools = resolved.tools && lastUser ? makeTools({ botId: bot.id, lastUserMessageId: lastUser.id, zone }) : undefined;
-    const messages = await convertToModelMessages(await inlineFileParts(thread), { tools });
+    const tools =
+      resolved.tools && lastUser
+        ? {
+            ...makeTools({ botId: bot.id, lastUserMessageId: lastUser.id, zone }),
+            ...makeWebTools({ thread, search: resolved.search }),
+            ...(resolved.searchTool ? { web_search: resolved.searchTool } : {}),
+          }
+        : undefined;
+    const messages = await convertToModelMessages(await inlineFileParts(forModel(thread)), { tools });
 
-    const result = streamText({ model: resolved.model, instructions, messages, tools, stopWhen: isStepCount(4) });
+    // Enough steps to search, read and answer.
+    const result = streamText({ model: resolved.model, instructions, messages, tools, stopWhen: isStepCount(8) });
 
     // Both copies use the same id so the saved reply matches what the browser showed.
     const replyId = newMessageId();
@@ -85,7 +95,7 @@ export async function POST(req: Request) {
         messageId: replyId,
         onEnd: async ({ messages: all }) => {
           const reply = all.at(-1);
-          if (reply?.role === "assistant") await saveAssistant(bot.id, reply);
+          if (reply?.role === "assistant") await saveAssistant(bot.id, compactForStorage(reply));
         },
       }),
     );

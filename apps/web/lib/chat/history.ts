@@ -89,3 +89,27 @@ export function trimHistory(msgs: UIMessage[], budget = 60_000): UIMessage[] {
   }
   return out;
 }
+
+type ToolPart = { type: string; state?: string; output?: unknown; providerExecuted?: boolean };
+const isPageRead = (p: ToolPart) => p.type === "tool-read_page" && p.state === "output-available";
+
+/** A reply as it's stored: pages keep their address, title and links, not their text (it was only for the model). */
+export function compactForStorage(m: UIMessage): UIMessage {
+  return {
+    ...m,
+    parts: m.parts.map((p) => {
+      const t = p as ToolPart;
+      const out = t.output as { text?: unknown } | undefined;
+      if (!isPageRead(t) || typeof out?.text !== "string" || out.text === "") return p;
+      return { ...p, output: { ...out, text: "", chars: out.text.length } } as UIMessage["parts"][number];
+    }),
+  };
+}
+
+/**
+ * Earlier replies as the model gets them: no page text, and none of the provider's own
+ * search steps (providers can't take those back, and the answer already carries them).
+ */
+export function forModel(thread: UIMessage[]): UIMessage[] {
+  return thread.map((m) => (m.role !== "assistant" ? m : compactForStorage({ ...m, parts: m.parts.filter((p) => !(p as ToolPart).providerExecuted) })));
+}

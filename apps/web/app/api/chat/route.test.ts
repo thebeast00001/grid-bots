@@ -6,6 +6,7 @@ import { listMemories } from "@/lib/memory/repo";
 import { addProvider } from "@/lib/models/providers-repo";
 import { deleteSetting, setSetting } from "@/lib/settings";
 import { useTempHome } from "@/lib/test-home";
+import { setSearchService } from "@/lib/web/search";
 import { POST } from "./route";
 
 useTempHome();
@@ -67,6 +68,30 @@ describe("with the test model", () => {
     await reader.read();
     await reader.cancel();
     expect(await waitFor(() => assistantText(b.id))).toBe("You said: please keep going");
+  });
+
+  test("without a search service, the bot says where to turn search on", async () => {
+    const b = await chattyBot();
+    await (await post({ botId: b.id, message: userMsg("search for grid bots"), trigger: "submit-message" })).text();
+    expect(await waitFor(() => assistantText(b.id))).toBe("I can't search the web here. Search can be turned on in Settings → Web, or send me a link to read.");
+  });
+
+  test("a research reply streams its steps and is saved with sources but without page text", async () => {
+    await setSearchService({ kind: "test" });
+    try {
+      const b = await chattyBot();
+      const body = await (await post({ botId: b.id, message: userMsg("search for grid bots"), trigger: "submit-message" })).text();
+      expect(body).toContain('"toolName":"web_search"');
+      expect(body).toContain('"toolName":"read_page"');
+      expect(await waitFor(() => assistantText(b.id))).toBe("Here's what I found about grid bots [1][2].");
+      const reply = (await loadThread(b.id)).at(-1)!;
+      const reads = reply.parts.filter((x) => x.type === "tool-read_page") as unknown as { output: Record<string, unknown> }[];
+      expect(reads).toHaveLength(2);
+      expect(reads[0].output).toMatchObject({ ok: true, n: 1, url: "https://grid.test/guide", site: "grid.test", text: "" });
+      expect(reads[0].output.chars).toBeGreaterThan(100);
+    } finally {
+      await setSearchService(null);
+    }
   });
 
   test("remember tool stores a memory about the user", async () => {

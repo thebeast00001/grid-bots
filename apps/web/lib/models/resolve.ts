@@ -1,13 +1,15 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
+import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import { createGoogle } from "@ai-sdk/google";
 import { createGroq } from "@ai-sdk/groq";
 import { createMistral } from "@ai-sdk/mistral";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAI, openai } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createXai } from "@ai-sdk/xai";
-import type { LanguageModel } from "ai";
+import { wrapLanguageModel, type LanguageModel, type Tool } from "ai";
 import { getSetting } from "../settings";
+import { builtinRefused, searchFallback } from "../web/builtin";
+import { builtInSearch, getSearchService } from "../web/search";
 import { listModels } from "./catalog";
 import { chatgptModel } from "./chatgpt/model";
 import { GridModelError } from "./errors";
@@ -15,7 +17,16 @@ import { PROVIDER_KINDS, type ModelRef, type ProviderKind } from "./kinds";
 import { mockModel } from "./mock";
 import { listProviders, loadProvider, type LoadedProvider } from "./providers-repo";
 
-export type ResolvedModel = { model: LanguageModel; ref: ModelRef; tools: boolean; kind: ProviderKind };
+export type ResolvedModel = {
+  model: LanguageModel;
+  ref: ModelRef;
+  tools: boolean;
+  kind: ProviderKind;
+  /** How the bot searches the web: Grid's web_search (a search service is set), the model's own search, or not at all. */
+  search: "grid" | "builtin" | null;
+  /** The provider's own search tool, when search is "builtin". */
+  searchTool?: Tool;
+};
 
 const NO_MODEL = () =>
   new GridModelError("no-model", "Connect a model to start chatting.", { action: { label: "Connect a model", href: "/welcome" } });
@@ -86,5 +97,17 @@ export async function resolveModel(ref?: ModelRef | null): Promise<ResolvedModel
   const found = (await tryLoad(ref)) ?? (await tryLoad(await getSetting<ModelRef>("defaultModel")));
   if (!found) throw (await listProviders()).length > 0 ? NO_DEFAULT() : NO_MODEL();
   const { p, r } = found;
-  return { model: makeModel(p, r.modelId), ref: r, tools: await supportsTools(p, r.modelId), kind: p.kind };
+  const tools = await supportsTools(p, r.modelId);
+  const base = { model: makeModel(p, r.modelId), ref: r, tools, kind: p.kind };
+  if (!tools) return { ...base, search: null };
+  // A search service the user set is used with every model; otherwise the model's own search, if it has one.
+  if (await getSearchService()) return { ...base, search: "grid" };
+  const key = `${p.id}:${r.modelId}`;
+  if (!builtInSearch(p.kind) || builtinRefused(key)) return { ...base, search: null };
+  return {
+    ...base,
+    model: wrapLanguageModel({ model: base.model as Parameters<typeof wrapLanguageModel>[0]["model"], middleware: searchFallback(key) }),
+    search: "builtin",
+    searchTool: p.kind === "anthropic" ? anthropic.tools.webSearch_20250305({ maxUses: 3 }) : openai.tools.webSearch({}),
+  };
 }

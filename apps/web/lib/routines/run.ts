@@ -3,7 +3,7 @@ import { convertToModelMessages, isStepCount, streamText, type UIMessage } from 
 import { eq } from "drizzle-orm";
 import { getBot, touchBot } from "../bots/repo";
 import { inlineFileParts } from "../chat/files";
-import { loadThread, textOf, trimHistory } from "../chat/history";
+import { compactForStorage, forModel, loadThread, textOf, trimHistory } from "../chat/history";
 import { buildInstructions } from "../chat/instructions";
 import { makeTools, type Rating } from "../chat/tools";
 import { chatUIStream } from "../chat/ui-stream";
@@ -18,6 +18,7 @@ import { toGridError, type GridModelError } from "../models/errors";
 import { resolveModel } from "../models/resolve";
 import { userZone } from "../settings";
 import { claimDueRoutines, getRoutineRow, scheduleLabel, toRunView } from "./repo";
+import { makeWebTools } from "../web/tools";
 
 /** A run that hasn't finished by then is abandoned. */
 export const RUN_TIMEOUT_MS = 3 * 60_000;
@@ -65,16 +66,19 @@ async function work(r: RoutineRow, runId: string, messageId: string, onRate: (x:
   const [botMemories, userMemories, thread] = await Promise.all([listMemories(bot.id), listMemories(null), loadThread(bot.id)]);
   const history = trimHistory(thread.slice(-HISTORY));
   const prompt: UIMessage = { id: `prompt_${runId}`, role: "user", parts: [{ type: "text", text: routinePrompt(r, scheduleLabel(r, zone)) }] };
-  const instructions = buildInstructions({ bot, zone, botMemories, userMemories, now: new Date(), interview: { pending: false, answered: 0 }, tools: resolved.tools });
-  const tools = resolved.tools ? makeTools({ botId: bot.id, zone, onRate }) : undefined;
-  const modelMessages = await convertToModelMessages(await inlineFileParts([...history, prompt]), { tools });
+  const instructions = buildInstructions({ bot, zone, botMemories, userMemories, now: new Date(), interview: { pending: false, answered: 0 }, tools: resolved.tools, search: resolved.search });
+  const convo = [...history, prompt];
+  const tools = resolved.tools
+    ? { ...makeTools({ botId: bot.id, zone, onRate }), ...makeWebTools({ thread: convo, search: resolved.search }), ...(resolved.searchTool ? { web_search: resolved.searchTool } : {}) }
+    : undefined;
+  const modelMessages = await convertToModelMessages(await inlineFileParts(forModel(convo)), { tools });
 
   const result = streamText({
     model: resolved.model,
     instructions,
     messages: modelMessages,
     tools,
-    stopWhen: isStepCount(4),
+    stopWhen: isStepCount(8),
     abortSignal: AbortSignal.timeout(RUN_TIMEOUT_MS),
   });
   let failure: unknown;
@@ -164,7 +168,7 @@ async function finishRun(r: RoutineRow, runId: string, lateRun: boolean, fallbac
   let parts: UIMessage["parts"] = [];
   let rating: Rating | undefined;
   try {
-    parts = (await work(r, runId, messageId, (x) => (rating = x))).parts;
+    parts = compactForStorage(await work(r, runId, messageId, (x) => (rating = x))).parts;
   } catch (e) {
     status = "failed";
     failed = failureOf(e);
