@@ -19,7 +19,7 @@ export function formatWhen(iso: string, now = new Date()): string {
   return d.toLocaleDateString([], { day: "numeric", month: "short" });
 }
 
-function Row({ bot, active, size }: { bot: BotView; active: boolean; size: number }) {
+function Row({ bot, active, size, unread }: { bot: BotView; active: boolean; size: number; unread: boolean }) {
   const status = useBotStatus(bot.id);
   const line = status.text || bot.preview || bot.job || "New bot";
   return (
@@ -33,7 +33,10 @@ function Row({ bot, active, size }: { bot: BotView; active: boolean; size: numbe
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <span className="truncate text-[15px] font-semibold">{bot.name}</span>
-          <span className="tnum shrink-0 text-[12px] text-[var(--text-3)]">{formatWhen(bot.updatedAt)}</span>
+          <span className="flex shrink-0 items-center gap-1.5">
+            <span className="tnum text-[12px] text-[var(--text-3)]">{formatWhen(bot.updatedAt)}</span>
+            {unread && <span data-testid="unread" aria-label="New message" className="size-2.5 rounded-full" style={{ background: "var(--bot)" }} />}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <span className="truncate text-[13px] text-[var(--text-2)]">{line}</span>
@@ -50,7 +53,7 @@ function Row({ bot, active, size }: { bot: BotView; active: boolean; size: numbe
 
 /** `compact`: the phone list screen (bigger rows, no New bot button of its own). */
 export function BotList({ compact = false }: { compact?: boolean }) {
-  const { bots } = useBots();
+  const { bots, unread } = useBots();
   const pathname = usePathname();
   const [q, setQ] = useState("");
   const shown = (bots ?? []).filter((b) => `${b.name} ${b.job}`.toLowerCase().includes(q.toLowerCase()));
@@ -87,7 +90,7 @@ export function BotList({ compact = false }: { compact?: boolean }) {
         <AnimatePresence initial={false}>
           {shown.map((b) => (
             <motion.div key={b.id} layout="position" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={spring.smooth}>
-              <Row bot={b} active={pathname === `/bots/${b.id}`} size={compact ? 48 : 42} />
+              <Row bot={b} active={pathname === `/bots/${b.id}`} size={compact ? 48 : 42} unread={unread.has(b.id) && pathname !== `/bots/${b.id}`} />
             </motion.div>
           ))}
         </AnimatePresence>

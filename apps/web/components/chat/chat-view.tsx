@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { MemoryList } from "@/components/profile/memory-list";
 import { ProfilePanel } from "@/components/profile/profile-panel";
 import { useBots } from "@/components/shell/bots-store";
+import { useLiveEvent } from "@/components/shell/live-events";
 import { api } from "@/lib/api-client";
 import { setBotStatus, type BotStatus } from "@/lib/bot-status-store";
 import type { BotView, ModelRef, ProviderView } from "@/lib/client-types";
@@ -53,7 +54,7 @@ function botReactions(messages: UIMessage[]): Map<string, string> {
 type SoulNote = { kind: "wrote" | "starter"; after: string | null } | null;
 
 export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initial: UIMessage[]; mobile?: boolean }) {
-  const { upsert, refresh } = useBots();
+  const { upsert, refresh, markRead } = useBots();
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -65,6 +66,29 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
   );
   const { messages, setMessages, sendMessage, regenerate, status, error, clearError, stop } = useChat({ id: bot.id, messages: initial, transport });
   const visible = useMemo(() => messages.filter((m) => !isOpener(m)), [messages]);
+
+  // ── messages the bot writes on its own (a reminder going off) ─────
+  const appendFromServer = async () => {
+    try {
+      const r = await api<{ messages: UIMessage[] }>(`/api/bots/${bot.id}/messages`);
+      setMessages((list) => {
+        const have = new Set(list.map((m) => m.id));
+        const fresh = r.messages.filter((m) => !have.has(m.id));
+        return fresh.length ? [...list, ...fresh] : list;
+      });
+    } catch {
+      // The next event or a reload will catch up.
+    }
+  };
+  useLiveEvent((e) => {
+    if (e.type === "message" && e.botId === bot.id) void appendFromServer();
+  });
+  useEffect(() => {
+    markRead(bot.id);
+    const onVisible = () => document.visibilityState === "visible" && markRead(bot.id);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [bot.id, markRead]);
 
   // ── the interview ─────────────────────────────────────────────────
   const interviewing = bot.interview === "pending";
@@ -271,6 +295,7 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
                   <Fragment key={m.id}>
                     <MessageRow
                       m={m}
+                      botId={bot.id}
                       firstOfGroup={visible[i - 1]?.role !== m.role}
                       lastOfGroup={visible[i + 1]?.role !== m.role}
                       streaming={status === "streaming" && i === visible.length - 1 && !mine}

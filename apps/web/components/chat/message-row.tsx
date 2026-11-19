@@ -5,6 +5,8 @@ import type { UIMessage } from "ai";
 import { AnimatePresence, motion } from "motion/react";
 import { BookmarkPlus, CornerUpLeft, FileText, Pencil, Pin, RotateCcw } from "lucide-react";
 import { Streamdown } from "streamdown";
+import { ReminderChip, ReminderDueCard, ReminderPending, ReminderSetCard, type DueData, type Occurrence } from "@/components/reminders/reminder-card";
+import type { ReminderView } from "@/lib/client-types";
 import { ease, spring } from "@/lib/motion";
 
 export const REACTIONS = ["❤️", "👍", "😂", "🔥", "👀"];
@@ -23,6 +25,7 @@ export type RowActions = {
 
 type Props = {
   m: UIMessage;
+  botId: string;
   firstOfGroup: boolean;
   lastOfGroup: boolean;
   streaming: boolean;
@@ -38,7 +41,31 @@ const textOf = (m: UIMessage) =>
     .join("")
     .trim();
 
-export function MessageRow({ m, firstOfGroup, lastOfGroup, streaming, animateIn, botReaction, readLabel, actions }: Props) {
+type ToolOut = { ok?: boolean; reminder?: ReminderView };
+
+/** Cards for the reminder tools' results and for a reminder going off. */
+function ReminderParts({ m, botId, fresh }: { m: UIMessage; botId: string; fresh: boolean }) {
+  const out: React.ReactNode[] = [];
+  m.parts.forEach((p, i) => {
+    if (p.type === "data-reminder") {
+      const occurrence = (m.metadata as { reminder?: Occurrence } | undefined)?.reminder;
+      out.push(<ReminderDueCard key={i} botId={botId} messageId={m.id} data={(p as { data: DueData }).data} occurrence={occurrence} fresh={fresh} />);
+      return;
+    }
+    const kind = p.type === "tool-set_reminder" ? "set" : p.type === "tool-change_reminder" ? "changed" : p.type === "tool-cancel_reminder" ? "cancelled" : null;
+    if (!kind || !("state" in p)) return;
+    if (p.state === "input-streaming" || p.state === "input-available") {
+      if (kind === "set") out.push(<ReminderPending key={i} />);
+      return;
+    }
+    const result = p.state === "output-available" ? (p.output as ToolOut) : null;
+    if (!result?.ok || !result.reminder) return;
+    out.push(kind === "set" ? <ReminderSetCard key={i} botId={botId} reminder={result.reminder} /> : <ReminderChip key={i} kind={kind} reminder={result.reminder} />);
+  });
+  return out.length ? <>{out}</> : null;
+}
+
+export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, animateIn, botReaction, readLabel, actions }: Props) {
   const mine = m.role === "user";
   const isNew = animateIn && !shown.has(m.id);
   useEffect(() => {
@@ -50,7 +77,9 @@ export function MessageRow({ m, firstOfGroup, lastOfGroup, streaming, animateIn,
   const press = useRef<number | undefined>(undefined);
   const reaction = (m.metadata as { reaction?: string } | undefined)?.reaction;
   const files = m.parts.filter((p) => p.type === "file");
-  const text = textOf(m);
+  // A reminder going off shows as its card, not as the plain "⏰ …" text kept for the model.
+  const isReminder = m.parts.some((p) => p.type === "data-reminder");
+  const text = isReminder ? "" : textOf(m);
   const fine = typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
   return (
@@ -164,6 +193,8 @@ export function MessageRow({ m, firstOfGroup, lastOfGroup, streaming, animateIn,
             </div>
           )
         )}
+
+        {!mine && <ReminderParts m={m} botId={botId} fresh={isNew} />}
 
         <AnimatePresence>
           {(mine ? botReaction : reaction) && (

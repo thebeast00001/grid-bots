@@ -7,6 +7,7 @@ import { ease } from "@/lib/motion";
 import { usePhone } from "@/lib/use-media";
 import { BotList } from "./bot-list";
 import { BotsProvider } from "./bots-store";
+import { LiveEvents } from "./live-events";
 import { PhoneHome } from "./phone-home";
 import { Rail } from "./rail";
 
@@ -42,6 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const phone = usePhone();
   return (
     <BotsProvider>
+      <LiveEvents />
       <LayoutGroup>
         {phone ? (
           <PhoneShell>{children}</PhoneShell>

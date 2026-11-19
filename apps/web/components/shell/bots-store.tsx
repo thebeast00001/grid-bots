@@ -9,6 +9,10 @@ type BotsCtx = {
   refresh: () => Promise<void>;
   upsert: (b: BotView) => void;
   remove: (id: string) => void;
+  /** Bots with something new you haven't looked at (this session). */
+  unread: ReadonlySet<string>;
+  markUnread: (id: string) => void;
+  markRead: (id: string) => void;
 };
 
 const Ctx = createContext<BotsCtx | null>(null);
@@ -36,7 +40,20 @@ export function BotsProvider({ children }: { children: React.ReactNode }) {
 
   const remove = useCallback((id: string) => setBots((list) => (list ?? []).filter((x) => x.id !== id)), []);
 
-  const value = useMemo(() => ({ bots, refresh, upsert, remove }), [bots, refresh, upsert, remove]);
+  const [unread, setUnread] = useState<ReadonlySet<string>>(new Set());
+  const markUnread = useCallback((id: string) => setUnread((s) => (s.has(id) ? s : new Set(s).add(id))), []);
+  const markRead = useCallback(
+    (id: string) =>
+      setUnread((s) => {
+        if (!s.has(id)) return s;
+        const next = new Set(s);
+        next.delete(id);
+        return next;
+      }),
+    [],
+  );
+
+  const value = useMemo(() => ({ bots, refresh, upsert, remove, unread, markUnread, markRead }), [bots, refresh, upsert, remove, unread, markUnread, markRead]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

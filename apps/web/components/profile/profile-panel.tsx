@@ -6,11 +6,12 @@ import { Streamdown } from "streamdown";
 import { toast } from "sonner";
 import { Critter } from "@/components/critter/critter";
 import { ModelPicker } from "@/components/models/model-picker";
+import { ReminderList } from "@/components/reminders/reminder-list";
 import { useBots } from "@/components/shell/bots-store";
 import { api } from "@/lib/api-client";
 import type { BotView } from "@/lib/client-types";
 
-/** Who the bot is: job, soul, standing instructions, model. Memory joins in Task 11. */
+/** Who the bot is: job, soul, standing instructions, reminders, memory (children), model. */
 export function ProfilePanel({ bot, onClose, children }: { bot: BotView; onClose: () => void; children?: React.ReactNode }) {
   const { upsert } = useBots();
   const [job, setJob] = useState(bot.job);
@@ -121,6 +122,8 @@ export function ProfilePanel({ bot, onClose, children }: { bot: BotView; onClose
           </ul>
         )}
       </section>
+
+      <ReminderList bot={bot} />
 
       {children}
 
