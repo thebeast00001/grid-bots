@@ -51,6 +51,12 @@ test("instructions put the soul before memories and include standing instruction
   expect(text).not.toContain("[[interview]]");
 });
 
+test("after the fifth answer the bot wraps up instead of asking more", () => {
+  const text = buildInstructions({ bot: { ...bot, soul: "" }, botMemories: [], userMemories: [], now: new Date(), interview: { pending: true, answered: 5 }, tools: false });
+  expect(text).not.toContain("[[interview]]");
+  expect(text).toContain("interview is complete");
+});
+
 test("the interview marker appears only while the interview is pending", () => {
   const text = buildInstructions({ bot: { ...bot, soul: "" }, botMemories: [], userMemories: [], now: new Date(), interview: { pending: true, answered: 2 }, tools: false });
   expect(text).toContain("[[interview]]");

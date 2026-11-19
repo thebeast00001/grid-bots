@@ -2,7 +2,7 @@ import { convertToModelMessages, createIdGenerator, createUIMessageStreamRespons
 import { z } from "zod";
 import { getBot } from "@/lib/bots/repo";
 import { inlineFileParts } from "@/lib/chat/files";
-import { START, applyIncoming, saveAssistant, textOf, trimHistory } from "@/lib/chat/history";
+import { START, applyIncoming, loadThread, saveAssistant, textOf, trimHistory } from "@/lib/chat/history";
 import { buildInstructions } from "@/lib/chat/instructions";
 import { makeTools } from "@/lib/chat/tools";
 import { errorResponse, notFound, readJson } from "@/lib/http";
@@ -43,8 +43,15 @@ export async function POST(req: Request) {
     if (!bot) throw notFound("Bot");
     const incoming = body.message as unknown as UIMessage;
 
-    const history = await applyIncoming(bot.id, incoming, body.trigger);
-    const answered = history.filter((m) => m.role === "user" && textOf(m) !== START).length;
+    // A new bot's chat opens with a hidden "[[start]]" message: answer it, never store it.
+    const opener = textOf(incoming).startsWith(START);
+    const history = opener
+      ? [
+          ...(await loadThread(bot.id)),
+          { ...incoming, parts: [{ type: "text" as const, text: `${START} The user just made you. Say hi in one short line, then ask your first question.` }] },
+        ]
+      : await applyIncoming(bot.id, incoming, body.trigger);
+    const answered = history.filter((m) => m.role === "user" && !textOf(m).startsWith(START)).length;
     const resolved = await resolveModel(bot.model);
 
     const [botMemories, userMemories] = await Promise.all([listMemories(bot.id), listMemories(null)]);

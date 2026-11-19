@@ -48,8 +48,12 @@ export function buildInstructions(p: {
     `Current date and time: ${p.now.toUTCString()} (${p.now.toISOString().slice(0, 10)}).`,
   ];
 
-  if (p.interview.pending) {
-    const n = Math.min(p.interview.answered + 1, INTERVIEW_QUESTIONS);
+  if (p.interview.pending && p.interview.answered >= INTERVIEW_QUESTIONS) {
+    sections.push(
+      "The interview is complete. Thank the user in one warm sentence and say you're writing down what you learned. Don't ask another question.",
+    );
+  } else if (p.interview.pending) {
+    const n = p.interview.answered + 1;
     sections.push(
       `[[interview]]\nYou are meeting the user for the first time. Get to know them and your job by asking ${INTERVIEW_QUESTIONS} short questions in total, one per message: their goals, what they want off their plate, how they like to be talked to, what you must always check with them first, and anything else you need. This is question ${n} of ${INTERVIEW_QUESTIONS}. Briefly acknowledge their last answer if there is one, then ask only that question.`,
     );

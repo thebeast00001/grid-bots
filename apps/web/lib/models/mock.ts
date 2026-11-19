@@ -68,7 +68,7 @@ function reply(options: LanguageModelV4CallOptions): LanguageModelV4StreamPart[]
   const last = users.at(-1) ?? "";
 
   if (system.includes("[[interview]]")) {
-    const answered = users.filter((t) => t !== "[[start]]").length;
+    const answered = users.filter((t) => !t.startsWith("[[start]]")).length;
     return textParts(`Question ${answered + 1}: what should I know?`);
   }
   if (system.includes("[[soul]]")) return textParts(SOUL);

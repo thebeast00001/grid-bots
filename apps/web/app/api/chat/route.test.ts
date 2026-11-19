@@ -80,6 +80,15 @@ describe("with the test model", () => {
     expect(mems.find((x) => x.text === "I like tea")).toMatchObject({ source: "bot", botId: null });
   });
 
+  test("the hidden opener starts the interview and is never stored", async () => {
+    const b = await createBot({ name: `New${++n}`, job: "", avatar });
+    const res = await post({ botId: b.id, message: userMsg("[[start]]"), trigger: "submit-message" });
+    await res.text();
+    expect(await waitFor(() => assistantText(b.id))).toBe("Question 1: what should I know?");
+    const thread = await loadThread(b.id);
+    expect(thread.map((m) => m.role)).toEqual(["assistant"]);
+  });
+
   test("rejects an assistant message from the client", async () => {
     const b = await chattyBot();
     const res = await post({ botId: b.id, message: { id: "x", role: "assistant", parts: [{ type: "text", text: "hi" }] }, trigger: "submit-message" });
