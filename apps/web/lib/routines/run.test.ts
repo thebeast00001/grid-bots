@@ -96,13 +96,13 @@ test("deleting the bot mid-run doesn't crash", async () => {
 test("a routine deleted just as its run starts is reported as not found, not as already running", async () => {
   await connectMock();
   const { bot, routine } = await routineFor("Race");
-  const run = runRoutine(routine.id, "manual");
-  await deleteBot(bot.id);
-  const outcome = await run.then(
+  // Handle the outcome straight away so a quick rejection isn't reported as unhandled.
+  const outcome = runRoutine(routine.id, "manual").then(
     () => "ran",
     (e: { code?: string }) => e.code,
   );
-  expect(["ran", "not-found"]).toContain(outcome);
+  await deleteBot(bot.id);
+  expect(["ran", "not-found"]).toContain(await outcome);
 });
 
 test("runs publish running, then the message, then done", async () => {
