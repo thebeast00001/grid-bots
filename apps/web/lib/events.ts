@@ -7,7 +7,9 @@ import { EventEmitter } from "node:events";
  */
 export type GridEvent =
   | { type: "message"; botId: string; messageId: string; title?: string; body?: string }
-  | { type: "reminders"; botId: string };
+  | { type: "reminders"; botId: string }
+  | { type: "routines"; botId: string }
+  | { type: "run"; botId: string; routineId: string; runId: string; name: string; status: "running" | "done" | "failed" };
 
 const g = globalThis as unknown as { __gridBus?: EventEmitter };
 const bus = () => {

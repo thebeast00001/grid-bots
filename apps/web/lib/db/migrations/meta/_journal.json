@@ -15,6 +15,13 @@
       "when": 1795060441779,
       "tag": "0001_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795072657244,
+      "tag": "0002_routines",
+      "breakpoints": true
     }
   ]
 }

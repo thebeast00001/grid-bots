@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db/client";
-import { bots, files, memories, messages, providers, reminders, settings } from "@/lib/db/schema";
+import { bots, files, memories, messages, providers, reminders, routineRuns, routines, settings } from "@/lib/db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +7,6 @@ export const dynamic = "force-dynamic";
 export async function POST() {
   if (process.env.GRID_E2E !== "1") return new Response(null, { status: 404 });
   const db = await getDb();
-  for (const t of [reminders, messages, memories, files, bots, providers, settings]) await db.delete(t);
+  for (const t of [routineRuns, routines, reminders, messages, memories, files, bots, providers, settings]) await db.delete(t);
   return new Response(null, { status: 204 });
 }

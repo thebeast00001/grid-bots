@@ -76,6 +76,7 @@ export function LiveEvents() {
         refreshReminders(e.botId).catch(() => {});
         return;
       }
+      if (e.type !== "message") return;
       const url = `/bots/${e.botId}`;
       const open = where.current === url;
       const visible = document.visibilityState === "visible";

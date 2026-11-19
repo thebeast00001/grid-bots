@@ -35,6 +35,32 @@ export type BotView = {
 
 export type ApiErrorBody = { error?: { code: string; message: string; action?: { label: string; href: string } } };
 
+export type RoutineView = {
+  id: string;
+  botId: string;
+  name: string;
+  instruction: string;
+  repeat: Repeat;
+  status: "active" | "paused" | "done";
+  nextRunAt: string | null;
+  lastRunAt: string | null;
+  /** "Weekdays at 8:00 AM", "Once, Tomorrow, 9:00 AM". */
+  scheduleLabel: string;
+  running: boolean;
+};
+
+export type RunView = {
+  id: string;
+  routineId: string;
+  trigger: "schedule" | "manual";
+  status: "running" | "done" | "failed" | "missed";
+  startedAt: string;
+  finishedAt: string | null;
+  messageId: string | null;
+  error: string | null;
+  late: boolean;
+};
+
 export type ReminderStatus = "scheduled" | "fired" | "done" | "cancelled";
 
 export type ReminderView = {

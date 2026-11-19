@@ -92,7 +92,49 @@ export const reminders = pgTable(
   (t) => [index("reminders_due_idx").on(t.status, t.dueAt), index("reminders_bot_idx").on(t.botId)],
 );
 
+export const routines = pgTable(
+  "routines",
+  {
+    id: text("id").primaryKey(),
+    botId: text("bot_id")
+      .notNull()
+      .references(() => bots.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    instruction: text("instruction").notNull(),
+    /** The first time asked for; later times count from it (see nextOccurrence). */
+    anchorAt: instant("anchor_at").notNull(),
+    /** Null once a one-time routine has run. */
+    nextRunAt: instant("next_run_at"),
+    repeat: text("repeat").$type<Repeat>().notNull().default("daily"),
+    status: text("status").$type<"active" | "paused" | "done">().notNull().default("active"),
+    lastRunAt: instant("last_run_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("routines_due_idx").on(t.status, t.nextRunAt), index("routines_bot_idx").on(t.botId)],
+);
+
+export const routineRuns = pgTable(
+  "routine_runs",
+  {
+    id: text("id").primaryKey(),
+    routineId: text("routine_id")
+      .notNull()
+      .references(() => routines.id, { onDelete: "cascade" }),
+    botId: text("bot_id").notNull(),
+    trigger: text("trigger").$type<"schedule" | "manual">().notNull(),
+    status: text("status").$type<"running" | "done" | "failed" | "missed">().notNull(),
+    startedAt: instant("started_at").notNull(),
+    finishedAt: instant("finished_at"),
+    messageId: text("message_id"),
+    error: text("error"),
+    late: boolean("late").notNull().default(false),
+  },
+  (t) => [index("routine_runs_routine_idx").on(t.routineId, t.startedAt)],
+);
+
 export type Memory = typeof memories.$inferSelect;
+export type RoutineRow = typeof routines.$inferSelect;
+export type RunRow = typeof routineRuns.$inferSelect;
 export type ReminderRow = typeof reminders.$inferSelect;
 export type BotRow = typeof bots.$inferSelect;
 export type MessageRow = typeof messages.$inferSelect;
