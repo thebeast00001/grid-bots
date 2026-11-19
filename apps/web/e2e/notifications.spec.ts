@@ -32,6 +32,28 @@ test("a reminder lands in the inbox, survives a reload, and opening its chat cle
   await expect(page.getByRole("link", { name: /There/ }).getByTestId("unread")).toHaveCount(0);
 });
 
+test("opening a chat straight from a link (a tapped push) reads its notifications", async ({ page }) => {
+  await connectMock(page);
+  const here = await makeBot(page, "Desk", { skipInterview: true });
+  const away = await makeBot(page, "Away", { skipInterview: true });
+  await page.goto(`/bots/${here}`);
+  await page.request.post("/api/reminders", { headers: H, data: { botId: away, text: "Tapped later", when: "in 1 second" } });
+  await expect(page.getByTestId("inbox-count")).toHaveText("1", { timeout: 20_000 });
+
+  // A fresh page load, like a notification click opening a window — with the inbox slower
+  // to load than the chat, so the chat is open before the app knows what's unread.
+  let chatOpen = false;
+  await page.route("**/api/notifications", async (route) => {
+    while (!chatOpen) await new Promise((r) => setTimeout(r, 50));
+    await route.continue();
+  });
+  await page.goto(`/bots/${away}`);
+  await expect(page.getByPlaceholder("Message Away")).toBeVisible();
+  chatOpen = true;
+  await expect(page.getByTestId("inbox-count")).toHaveCount(0);
+  await expect.poll(async () => (await (await page.request.get("/api/notifications")).json()).unread.total).toBe(0);
+});
+
 test("a muted bot's reminder waits quietly in the inbox", async ({ page }) => {
   await connectMock(page);
   const here = await makeBot(page, "Loud", { skipInterview: true });

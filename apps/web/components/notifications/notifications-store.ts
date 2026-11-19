@@ -16,14 +16,43 @@ const set = (next: Inbox) => {
   listeners.forEach((l) => l());
 };
 
-export async function refreshInbox(): Promise<void> {
-  const r = await api<{ notifications: NotificationView[]; unread: Inbox["unread"] }>("/api/notifications");
-  set({ items: r.notifications, unread: r.unread });
+// One fetch at a time. `stale` is set when something changes (here, or on the server) while
+// it's in flight; its answer is then dropped and it asks again, so an old answer can't undo
+// a newer change.
+let running: Promise<void> | null = null;
+let stale = false;
+const changedLocally = () => {
+  if (running) stale = true;
+};
+
+export function refreshInbox(): Promise<void> {
+  stale = true;
+  running ??= (async () => {
+    try {
+      while (stale) {
+        stale = false;
+        const r = await api<{ notifications: NotificationView[]; unread: Inbox["unread"] }>("/api/notifications");
+        if (!stale) set({ items: r.notifications, unread: r.unread });
+      }
+    } finally {
+      running = null;
+    }
+  })();
+  return running;
 }
+
+/** First load: joins one already on its way instead of starting another. */
+export function loadInbox(): Promise<void> {
+  if (running || state.items !== null) return running ?? Promise.resolve();
+  return refreshInbox();
+}
+
+export const getInboxForTests = (): Inbox => state;
 
 /** A notification the server just announced. */
 export function addNotification(n: NotificationView): void {
   if (state.items?.some((x) => x.id === n.id)) return;
+  changedLocally();
   const byBot = { ...state.unread.byBot };
   let total = state.unread.total;
   if (!n.readAt) {
@@ -34,6 +63,7 @@ export function addNotification(n: NotificationView): void {
 }
 
 function markLocally(match: (n: NotificationView) => boolean) {
+  changedLocally();
   const now = new Date().toISOString();
   const byBot = { ...state.unread.byBot };
   let total = state.unread.total;
@@ -47,9 +77,9 @@ function markLocally(match: (n: NotificationView) => boolean) {
   set({ items: items ?? null, unread: { total, byBot } });
 }
 
-/** Opening a bot's chat reads its notifications. */
+/** Opening a bot's chat reads its notifications (even before the inbox has loaded: a tapped push opens the chat cold). */
 export async function markBotRead(botId: string): Promise<void> {
-  if (!state.unread.byBot[botId]) return;
+  if (state.items !== null && !state.unread.byBot[botId]) return;
   const byBot = { ...state.unread.byBot };
   const total = Math.max(0, state.unread.total - (byBot[botId] ?? 0));
   delete byBot[botId];
@@ -76,7 +106,7 @@ export function useInbox(): Inbox {
     () => EMPTY,
   );
   useEffect(() => {
-    if (state.items === null) refreshInbox().catch(() => {});
+    loadInbox().catch(() => {});
   }, []);
   return s;
 }
