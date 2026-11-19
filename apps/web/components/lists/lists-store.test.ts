@@ -46,3 +46,13 @@ test("a refresh that lands while changes are pending doesn't undo them", async (
   await tick();
   expect(store.getListForTests("l1")).toMatchObject({ done: 1 });
 });
+
+test("a change to one list reads back only that list", async () => {
+  const other = store.refreshList("l2");
+  calls.find((c) => c.path === "/api/lists/l2")!.resolve({ ...view([item("x")]), id: "l2" });
+  await other;
+  const before = calls.length;
+  store.refreshAllLists("l2");
+  await tick();
+  expect(calls.slice(before).map((c) => c.path)).toEqual(["/api/lists/l2"]);
+});

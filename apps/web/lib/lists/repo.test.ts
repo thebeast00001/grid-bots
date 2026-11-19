@@ -145,5 +145,8 @@ test("every change publishes a lists event", async () => {
   await renameList(l.id, "Evented 2");
   await deleteList(l.id);
   off();
-  expect(seen.filter((e) => e.type === "lists")).toHaveLength(5);
+  const lists = seen.filter((e) => e.type === "lists");
+  expect(lists).toHaveLength(5);
+  // Each one names its list, so only that list needs reading again.
+  expect(lists.every((e) => e.type === "lists" && e.listId === l.id)).toBe(true);
 });

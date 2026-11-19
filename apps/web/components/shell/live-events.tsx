@@ -92,7 +92,7 @@ export function LiveEvents() {
         return;
       }
       if (e.type === "lists") {
-        refreshAllLists();
+        refreshAllLists(e.listId);
         return;
       }
       if (e.type === "notification") {

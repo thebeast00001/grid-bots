@@ -59,9 +59,9 @@ export async function refreshOverview(): Promise<void> {
   }
 }
 
-/** Something changed somewhere: refresh whatever is loaded. */
-export function refreshAllLists(): void {
-  for (const id of lists.keys()) void fetchList(id).catch(() => {});
+/** A list changed somewhere: read it again if it's on screen, and the overview if that is. Without an id, everything loaded. */
+export function refreshAllLists(listId?: string): void {
+  for (const id of listId ? [listId] : lists.keys()) if (lists.has(id)) void fetchList(id).catch(() => {});
   if (overview) void refreshOverview().catch(() => {});
 }
 

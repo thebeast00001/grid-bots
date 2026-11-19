@@ -86,7 +86,7 @@ async function row(id: string): Promise<ListRow> {
 async function touch(id: string) {
   const db = await getDb();
   await db.update(lists).set({ updatedAt: new Date().toISOString() }).where(eq(lists.id, id));
-  publish({ type: "lists" });
+  publish({ type: "lists", listId: id });
 }
 
 const itemView = (r: ListItemRow): ItemView => ({
@@ -209,7 +209,7 @@ export async function createList(input: { name: string; kind: ListKind; botId?: 
   const id = `lst_${hex()}`;
   await db.insert(lists).values({ id, name, kind: input.kind, botId: input.botId ?? null, currency });
   if (ready.length) await db.insert(listItems).values(ready.map((i, position) => ({ id: `itm_${hex()}`, listId: id, position, ...i })));
-  publish({ type: "lists" });
+  publish({ type: "lists", listId: id });
   return getList(id, { now, zone });
 }
 
@@ -226,7 +226,7 @@ export async function deleteList(id: string): Promise<void> {
   await row(id);
   const db = await getDb();
   await db.delete(lists).where(eq(lists.id, id));
-  publish({ type: "lists" });
+  publish({ type: "lists", listId: id });
 }
 
 export async function addItems(listId: string, items: NewItem[], o: When = {}): Promise<ItemView[]> {
