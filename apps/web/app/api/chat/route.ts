@@ -1,13 +1,13 @@
-import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream, type UIMessage } from "ai";
+import { convertToModelMessages, createIdGenerator, createUIMessageStreamResponse, isStepCount, streamText, type UIMessage } from "ai";
 import { z } from "zod";
 import { getBot } from "@/lib/bots/repo";
 import { inlineFileParts } from "@/lib/chat/files";
 import { START, applyIncoming, loadThread, saveAssistant, textOf, trimHistory } from "@/lib/chat/history";
 import { buildInstructions } from "@/lib/chat/instructions";
 import { makeTools } from "@/lib/chat/tools";
+import { chatUIStream } from "@/lib/chat/ui-stream";
 import { errorResponse, notFound, readJson } from "@/lib/http";
 import { listMemories } from "@/lib/memory/repo";
-import { toGridError } from "@/lib/models/errors";
 import { resolveModel } from "@/lib/models/resolve";
 import { userZone } from "@/lib/settings";
 
@@ -76,15 +76,13 @@ export async function POST(req: Request) {
 
     // Both copies use the same id so the saved reply matches what the browser showed.
     const replyId = newMessageId();
-    const errorText = (e: unknown) => JSON.stringify(toGridError(e).toJSON());
 
     void drain(
-      toUIMessageStream({
+      chatUIStream({
         stream: result.stream,
         tools,
         originalMessages: thread,
-        generateMessageId: () => replyId,
-        onError: errorText,
+        messageId: replyId,
         onEnd: async ({ messages: all }) => {
           const reply = all.at(-1);
           if (reply?.role === "assistant") await saveAssistant(bot.id, reply);
@@ -93,7 +91,7 @@ export async function POST(req: Request) {
     );
 
     return createUIMessageStreamResponse({
-      stream: toUIMessageStream({ stream: result.stream, tools, originalMessages: thread, generateMessageId: () => replyId, onError: errorText }),
+      stream: chatUIStream({ stream: result.stream, tools, originalMessages: thread, messageId: replyId }),
     });
   } catch (e) {
     return errorResponse(e);

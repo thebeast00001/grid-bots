@@ -1,11 +1,12 @@
 import { randomBytes } from "node:crypto";
-import { convertToModelMessages, isStepCount, streamText, toUIMessageStream, type UIMessage } from "ai";
+import { convertToModelMessages, isStepCount, streamText, type UIMessage } from "ai";
 import { eq } from "drizzle-orm";
 import { getBot, touchBot } from "../bots/repo";
 import { inlineFileParts } from "../chat/files";
 import { loadThread, textOf, trimHistory } from "../chat/history";
 import { buildInstructions } from "../chat/instructions";
 import { makeTools } from "../chat/tools";
+import { chatUIStream } from "../chat/ui-stream";
 import type { RunView } from "../client-types";
 import { getDb } from "../db/client";
 import { messages, routineRuns, routines, type RoutineRow } from "../db/schema";
@@ -78,11 +79,11 @@ async function work(r: RoutineRow, runId: string, messageId: string): Promise<UI
   let failure: unknown;
   const reply = await new Promise<UIMessage | undefined>((resolve) => {
     void drain(
-      toUIMessageStream({
+      chatUIStream({
         stream: result.stream,
         tools,
         originalMessages: [],
-        generateMessageId: () => messageId,
+        messageId,
         onError: (e) => {
           failure = e;
           return "error";
