@@ -110,7 +110,8 @@ test("a card whose list was deleted says so", async ({ page }) => {
 });
 
 test.describe("phone", () => {
-  test.use({ viewport: { width: 375, height: 812 }, hasTouch: true });
+  // Reduced motion: pages appear in place instead of sliding in, so measurements are final.
+  test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, reducedMotion: "reduce" });
 
   test("a huge amount doesn't run into the remove button", async ({ page }) => {
     const res = await page.request.post("/api/lists", { headers: H, data: { name: "Big spend", kind: "expenses", currency: "INR", items: [{ text: "New laptop", amount: 9_999_999_900 }] } });
