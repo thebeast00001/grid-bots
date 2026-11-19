@@ -11,6 +11,8 @@
     "build": "pnpm --filter @grid/web build",
     "test": "pnpm --filter @grid/web test",
     "e2e": "pnpm --filter @grid/web e2e",
-    "typecheck": "pnpm --filter @grid/web typecheck"
+    "typecheck": "pnpm --filter @grid/web typecheck",
+    "bundle:cli": "node packages/cli/scripts/bundle.mjs",
+    "test:cli": "node --test packages/cli/test/cli.test.mjs"
   }
 }

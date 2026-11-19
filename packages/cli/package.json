@@ -1,0 +1,22 @@
+{
+  "name": "gridbots",
+  "version": "0.1.0",
+  "description": "Grid: your AI team, open source. Bots with a face, any model, on your own machine.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "gridbots": "bin/gridbots.mjs"
+  },
+  "files": [
+    "bin",
+    "app"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "bundle": "node scripts/bundle.mjs",
+    "test": "node --test test/cli.test.mjs"
+  },
+  "keywords": ["ai", "agents", "bots", "chatgpt", "ollama", "local-first", "self-hosted"]
+}
