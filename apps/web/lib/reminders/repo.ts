@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { and, asc, count, eq, min, type SQL } from "drizzle-orm";
 import type { ReminderView } from "../client-types";
 import { getDb } from "../db/client";
-import { reminders, type ReminderRow } from "../db/schema";
+import { messages, reminders, type ReminderRow } from "../db/schema";
 import { publish } from "../events";
 import { HttpStatus } from "../http";
 import type { Repeat } from "./when";
@@ -102,6 +102,19 @@ export async function completeReminder(id: string): Promise<ReminderView | null>
 
 export async function cancelReminder(id: string): Promise<ReminderView | null> {
   return change(id, { status: "cancelled" });
+}
+
+export type Occurrence = { state: "done"; at: string } | { state: "snoozed"; until: string };
+
+/** Notes on a delivered reminder's message what was done with it, so its card shows that after a reload. */
+export async function recordOccurrence(messageId: string, reminderId: string, occurrence: Occurrence): Promise<void> {
+  const db = await getDb();
+  const [m] = await db.select({ metadata: messages.metadata }).from(messages).where(eq(messages.id, messageId));
+  if (!m || m.metadata.reminderId !== reminderId) return;
+  await db
+    .update(messages)
+    .set({ metadata: { ...m.metadata, reminder: occurrence } })
+    .where(eq(messages.id, messageId));
 }
 
 /** When the next scheduled reminder is due, for the scheduler's timer. */
