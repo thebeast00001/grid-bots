@@ -10,6 +10,7 @@ import { useBotStatus } from "@/lib/bot-status-store";
 import type { BotView } from "@/lib/client-types";
 import { botVars } from "@/lib/critter/palette";
 import { spring } from "@/lib/motion";
+import { useInbox } from "@/components/notifications/notifications-store";
 import { useBots } from "./bots-store";
 
 export function formatWhen(iso: string, now = new Date()): string {
@@ -53,7 +54,8 @@ function Row({ bot, active, size, unread }: { bot: BotView; active: boolean; siz
 
 /** `compact`: the phone list screen (bigger rows, no New bot button of its own). */
 export function BotList({ compact = false }: { compact?: boolean }) {
-  const { bots, unread } = useBots();
+  const { bots } = useBots();
+  const { unread } = useInbox();
   const pathname = usePathname();
   const [q, setQ] = useState("");
   const shown = (bots ?? []).filter((b) => `${b.name} ${b.job}`.toLowerCase().includes(q.toLowerCase()));
@@ -90,7 +92,7 @@ export function BotList({ compact = false }: { compact?: boolean }) {
         <AnimatePresence initial={false}>
           {shown.map((b) => (
             <motion.div key={b.id} layout="position" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={spring.smooth}>
-              <Row bot={b} active={pathname === `/bots/${b.id}`} size={compact ? 48 : 42} unread={unread.has(b.id) && pathname !== `/bots/${b.id}`} />
+              <Row bot={b} active={pathname === `/bots/${b.id}`} size={compact ? 48 : 42} unread={!!unread.byBot[b.id] && pathname !== `/bots/${b.id}`} />
             </motion.div>
           ))}
         </AnimatePresence>

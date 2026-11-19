@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { refreshReminders } from "@/components/reminders/reminders-store";
+import { addNotification, refreshInbox, useInbox } from "@/components/notifications/notifications-store";
 import { refreshRoutines } from "@/components/routines/routines-store";
 import { setBotStatus } from "@/lib/bot-status-store";
 import { api } from "@/lib/api-client";
@@ -44,18 +45,19 @@ async function systemNotify(title: string, body: string, url: string): Promise<v
 }
 
 /**
- * Listens to /api/events for the whole app: a bot that writes on its own (a reminder
- * going off) gets an unread dot, a toast and, when Grid isn't in front, a system
- * notification. Also tells the server the browser's time zone.
+ * Listens to /api/events for the whole app. A notification (a reminder going off, a routine
+ * result) goes to the inbox; if it pings, it shows as a toast, or as a system notification
+ * when Grid isn't in front. Also tells the server the browser's time zone.
  */
 export function LiveEvents() {
-  const { markUnread, refresh, unread } = useBots();
+  const { refresh } = useBots();
+  const { unread } = useInbox();
   const pathname = usePathname();
   const router = useRouter();
   const where = useRef(pathname);
   where.current = pathname;
-  const actions = useRef({ markUnread, refresh, push: router.push });
-  actions.current = { markUnread, refresh, push: router.push };
+  const actions = useRef({ refresh, push: router.push });
+  actions.current = { refresh, push: router.push };
 
   useEffect(() => {
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -66,6 +68,8 @@ export function LiveEvents() {
 
   useEffect(() => {
     const source = new EventSource("/api/events");
+    // (Re)connected: catch up on anything missed while the stream was down.
+    source.onopen = () => void refreshInbox().catch(() => {});
     source.onmessage = (ev) => {
       let e: GridEvent;
       try {
@@ -82,22 +86,28 @@ export function LiveEvents() {
         refreshRoutines(e.botId).catch(() => {});
         return;
       }
-      if (e.type === "notification" || e.type === "inbox") return;
+      if (e.type === "inbox") {
+        refreshInbox().catch(() => {});
+        return;
+      }
+      if (e.type === "notification") {
+        const n = e.notification;
+        addNotification(n);
+        void actions.current.refresh().catch(() => {});
+        const url = `/bots/${n.botId}`;
+        const visible = document.visibilityState === "visible";
+        // The open, visible chat shows it already (and marks it read).
+        if (!n.ping || (visible && where.current === url)) return;
+        if (visible) toast(`${n.title}: ${n.body}`, { action: { label: "Open", onClick: () => actions.current.push(url) } });
+        else void systemNotify(n.title, n.body, url);
+        return;
+      }
       if (e.type === "run") {
         // The open chat shows this itself; the list shows it for every other bot.
         if (where.current !== `/bots/${e.botId}`) setBotStatus(e.botId, e.status === "running" ? { pose: "working", text: `Working on ${e.name}…` } : { pose: "idle", text: "" });
         return;
       }
-      const url = `/bots/${e.botId}`;
-      const open = where.current === url;
-      const visible = document.visibilityState === "visible";
-      void actions.current.refresh().catch(() => {});
-      if (open && visible) return;
-      actions.current.markUnread(e.botId);
-      const title = e.title ?? "Grid";
-      const body = e.body ?? "New message";
-      if (visible) toast(`${title}: ${body}`, { action: { label: "Open", onClick: () => actions.current.push(url) } });
-      else void systemNotify(title, body, url);
+      // A plain `message` event only updates the open chat (see ChatView).
     };
     return () => source.close();
   }, []);
@@ -105,8 +115,8 @@ export function LiveEvents() {
   // "(2) Grid" while something is unread. Re-applied after navigation, which resets the title.
   useEffect(() => {
     const base = document.title.replace(/^\(\d+\) /, "");
-    document.title = unread.size ? `(${unread.size}) ${base}` : base;
-  }, [unread, pathname]);
+    document.title = unread.total ? `(${unread.total}) ${base}` : base;
+  }, [unread.total, pathname]);
 
   return null;
 }

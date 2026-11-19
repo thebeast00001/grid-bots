@@ -12,6 +12,7 @@ import { MemoryList } from "@/components/profile/memory-list";
 import { ProfilePanel } from "@/components/profile/profile-panel";
 import { useBots } from "@/components/shell/bots-store";
 import { useLiveEvent } from "@/components/shell/live-events";
+import { markBotRead } from "@/components/notifications/notifications-store";
 import { api } from "@/lib/api-client";
 import { setBotStatus, type BotStatus } from "@/lib/bot-status-store";
 import type { BotView, ModelRef, ProviderView } from "@/lib/client-types";
@@ -54,7 +55,7 @@ function botReactions(messages: UIMessage[]): Map<string, string> {
 type SoulNote = { kind: "wrote" | "starter"; after: string | null } | null;
 
 export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initial: UIMessage[]; mobile?: boolean }) {
-  const { upsert, refresh, markRead } = useBots();
+  const { upsert, refresh } = useBots();
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -82,16 +83,17 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
   };
   const [routineRun, setRoutineRun] = useState<string | null>(null);
   useLiveEvent((e) => {
+    if (e.type === "notification" && e.notification.botId === bot.id && document.visibilityState === "visible") void markBotRead(bot.id);
     if (!("botId" in e) || e.botId !== bot.id) return;
     if (e.type === "message") void appendFromServer();
     if (e.type === "run") setRoutineRun(e.status === "running" ? e.name : null);
   });
   useEffect(() => {
-    markRead(bot.id);
-    const onVisible = () => document.visibilityState === "visible" && markRead(bot.id);
+    void markBotRead(bot.id);
+    const onVisible = () => document.visibilityState === "visible" && void markBotRead(bot.id);
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [bot.id, markRead]);
+  }, [bot.id]);
 
   // ── the interview ─────────────────────────────────────────────────
   const interviewing = bot.interview === "pending";

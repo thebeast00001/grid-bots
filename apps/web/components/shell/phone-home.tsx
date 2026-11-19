@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Cpu, Plus } from "lucide-react";
 import { Critter } from "@/components/critter/critter";
+import { InboxButton } from "@/components/notifications/inbox";
 import { useBotStatus } from "@/lib/bot-status-store";
 import type { BotView } from "@/lib/client-types";
 import { BotList } from "./bot-list";
@@ -27,6 +28,7 @@ export function PhoneHome() {
       <header className="flex h-14 shrink-0 items-center justify-between px-4 pt-[env(safe-area-inset-top)]">
         <span className="text-[20px] font-semibold tracking-tight">Grid</span>
         <div className="flex gap-1">
+          <InboxButton phone />
           <Link href="/settings/models" aria-label="Models" className="press hover-surface grid size-10 place-items-center rounded-full">
             <Cpu size={19} />
           </Link>

@@ -47,6 +47,14 @@ function ModelsSettings() {
           </Link>
           <h1 className="text-[17px] font-semibold">Models</h1>
         </header>
+        <nav className="-mt-2 mb-6 inline-flex rounded-full bg-[var(--surface-2)] p-1 text-[13px]">
+          <span className="rounded-full bg-[var(--surface)] px-3 py-1 font-medium edge" aria-current="page">
+            Models
+          </span>
+          <Link href="/settings/notifications" className="press rounded-full px-3 py-1 text-[var(--text-2)]">
+            Notifications
+          </Link>
+        </nav>
 
         {status === "error" && (
           <div role="alert" className="mb-4 rounded-2xl px-4 py-3 text-[13.5px]" style={{ background: "color-mix(in oklch, oklch(0.63 0.2 25) 14%, var(--surface))" }}>

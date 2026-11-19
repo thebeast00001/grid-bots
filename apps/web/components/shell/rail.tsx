@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Cpu, Home, Moon, Sun } from "lucide-react";
+import { InboxButton } from "@/components/notifications/inbox";
 
 function GridMark() {
   return (
@@ -73,6 +74,7 @@ export function Rail() {
           <Icon size={19} />
         </Link>
       ))}
+      <InboxButton />
       <div className="flex-1" />
       <button onClick={toggle} title="Theme" aria-label="Toggle theme" className="press hover-surface grid size-10 place-items-center rounded-xl text-[var(--text-3)]">
         <Sun size={18} className="when-dark" />

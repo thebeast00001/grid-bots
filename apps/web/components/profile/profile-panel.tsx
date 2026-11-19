@@ -6,6 +6,7 @@ import { Streamdown } from "streamdown";
 import { toast } from "sonner";
 import { Critter } from "@/components/critter/critter";
 import { ModelPicker } from "@/components/models/model-picker";
+import { MuteControl } from "@/components/notifications/mute-control";
 import { ReminderList } from "@/components/reminders/reminder-list";
 import { RoutineList } from "@/components/routines/routine-list";
 import { useBots } from "@/components/shell/bots-store";
@@ -123,6 +124,8 @@ export function ProfilePanel({ bot, onClose, children }: { bot: BotView; onClose
           </ul>
         )}
       </section>
+
+      <MuteControl bot={bot} />
 
       <RoutineList bot={bot} />
 
