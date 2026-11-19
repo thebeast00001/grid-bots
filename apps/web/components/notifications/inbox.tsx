@@ -37,7 +37,7 @@ export function InboxButton({ phone = false }: { phone?: boolean }) {
       >
         <Bell size={phone ? 19 : 18} />
         {n > 0 && (
-          <span data-testid="inbox-count" className="tnum absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--danger)] px-1 text-[10px] font-semibold leading-none text-white">
+          <span data-testid="inbox-count" className="tnum absolute left-1/2 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--danger)] px-1 text-[10px] font-semibold leading-none text-white">
             {n > 99 ? "99+" : n}
           </span>
         )}

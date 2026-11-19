@@ -28,6 +28,8 @@ function keyBytes(b64: string): Uint8Array {
 export default function NotificationSettings() {
   const [s, setS] = useState<Settings | null>(null);
   const [device, setDevice] = useState<Device>("off");
+  // Set when this browser wouldn't subscribe (no service worker, private window, iOS outside the Home Screen).
+  const [pushFailed, setPushFailed] = useState(false);
 
   useEffect(() => {
     api<Settings>("/api/settings")
@@ -71,15 +73,16 @@ export default function NotificationSettings() {
     const perm = await Notification.requestPermission();
     if (perm === "denied") return setDevice("blocked");
     if (perm !== "granted") return setDevice("off");
-    const reg = await navigator.serviceWorker?.getRegistration();
-    if (!reg) return setDevice("tab");
+    setDevice("tab");
     try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (!reg) throw new Error("no service worker");
       const { publicKey } = await api<{ publicKey: string }>("/api/push");
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) as BufferSource });
       await api("/api/push", { method: "POST", body: JSON.stringify(sub.toJSON()) });
       setDevice("push");
     } catch {
-      setDevice("tab");
+      setPushFailed(true);
     }
   };
 
@@ -114,18 +117,21 @@ export default function NotificationSettings() {
           </span>
         </nav>
 
-        <section className={`${card} mb-4`}>
-          <h2 className="text-[15px] font-semibold">On this device</h2>
+        <section aria-labelledby="device-heading" className={`${card} mb-4`}>
+          <h2 id="device-heading" className="text-[15px] font-semibold">
+            On this device
+          </h2>
           <p className="mt-1 text-[13px] text-[var(--text-2)]">
             {device === "push" && "Grid can reach you here even when no Grid tab is open."}
-            {device === "tab" && "Grid shows notifications while a Grid tab is open. Install Grid as an app to get them when it's closed."}
+            {device === "tab" && !pushFailed && "Grid shows notifications while a Grid tab is open."}
+            {device === "tab" && pushFailed && "Grid shows notifications while a Grid tab is open, but this browser couldn't set up notifications for when Grid is closed. On iPhone and iPad, add Grid to your Home Screen first."}
             {device === "off" && "Allow notifications so reminders and routine results can reach you."}
             {device === "blocked" && "Notifications are blocked for Grid in this browser's site settings."}
             {device === "unsupported" && "This browser can't show notifications."}
           </p>
-          {(device === "off" || (device === "tab" && "serviceWorker" in navigator)) && (
+          {(device === "off" || (device === "tab" && !pushFailed && "serviceWorker" in navigator)) && (
             <button onClick={turnOn} className="press mt-3 rounded-full px-3.5 py-1.5 text-[13px] font-semibold" style={{ background: "var(--bot)", color: "var(--bot-ink)" }}>
-              Turn on notifications
+              {device === "off" ? "Turn on notifications" : "Also when Grid is closed"}
             </button>
           )}
           {device === "push" && (

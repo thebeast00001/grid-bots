@@ -5,6 +5,7 @@ import { notify } from "@/lib/notifications/repo";
 import { setSetting } from "@/lib/settings";
 import { useTempHome } from "@/lib/test-home";
 import { PATCH as patchBot } from "../bots/[id]/route";
+import { DELETE as unsubscribe, GET as pushKey, POST as subscribe } from "../push/route";
 import { GET as getSettings, PATCH as patchSettings } from "../settings/route";
 import { POST as read } from "./read/route";
 import { GET } from "./route";
@@ -60,4 +61,15 @@ test("quiet hours and ping level are settings, checked", async () => {
   // Defaults when never set.
   await setSetting("pingFor", "nonsense");
   expect((await (await getSettings()).json()).pingFor).toBe("skip-quiet");
+});
+
+test("push subscriptions: https only, sizes capped, removable", async () => {
+  const keys = { p256dh: "BNcR".padEnd(87, "x"), auth: "tBHI".padEnd(22, "y") };
+  const endpoint = "https://push.example.test/send/abc";
+  expect((await pushKey()).status).toBe(200);
+  expect((await subscribe(req("POST", { endpoint, keys }))).status).toBe(204);
+  expect((await subscribe(req("POST", { endpoint: "http://push.example.test/x", keys }))).status).toBe(400);
+  expect((await subscribe(req("POST", { endpoint: `https://push.example.test/${"a".repeat(2000)}`, keys }))).status).toBe(400);
+  expect((await subscribe(req("POST", { endpoint, keys: { ...keys, auth: "z".repeat(101) } }))).status).toBe(400);
+  expect((await unsubscribe(req("DELETE", { endpoint }))).status).toBe(204);
 });

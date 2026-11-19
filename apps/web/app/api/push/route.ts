@@ -14,7 +14,7 @@ export async function GET() {
 }
 
 const Sub = z.object({
-  endpoint: z.string().url().startsWith("https://"),
+  endpoint: z.string().max(2000).url().startsWith("https://"),
   keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
 });
 

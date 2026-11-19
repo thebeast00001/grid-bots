@@ -52,6 +52,20 @@ test("a muted bot's reminder waits quietly in the inbox", async ({ page }) => {
   await expect(toastWith(page, "Hushed reminder")).toHaveCount(0);
 });
 
+test("a three-digit unread count grows away from the bell instead of covering it", async ({ page }) => {
+  await connectMock(page);
+  const here = await makeBot(page, "Reader", { skipInterview: true });
+  const busy = await makeBot(page, "Busy", { skipInterview: true });
+  await page.request.patch(`/api/bots/${busy}`, { headers: H, data: { mute: "1h" } }); // no toast storm
+  for (let i = 0; i < 100; i++) await page.request.post("/api/reminders", { headers: H, data: { botId: busy, text: `Bulk ${i}`, when: "in 1 second" } });
+  await page.goto(`/bots/${here}`);
+  const button = page.getByRole("button", { name: /^Notifications/ });
+  await expect(button.getByTestId("inbox-count")).toHaveText("99+", { timeout: 20_000 });
+  const bell = (await button.locator("svg").boundingBox())!;
+  const badge = (await button.getByTestId("inbox-count").boundingBox())!;
+  expect(badge.x).toBeGreaterThanOrEqual(bell.x + bell.width / 2);
+});
+
 test("quiet hours hold a routine result; 'Only what matters' holds an ordinary one", async ({ page }) => {
   await connectMock(page);
   const here = await makeBot(page, "Desk", { skipInterview: true });
