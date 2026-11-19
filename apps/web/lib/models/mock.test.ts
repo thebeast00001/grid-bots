@@ -190,3 +190,51 @@ test("deep dive: three searches, six pages at once, and an answer citing everyth
   expect(calls.filter((c) => c.startsWith("read"))).toHaveLength(6);
   for (let n = 1; n <= 9; n++) expect(text).toContain(`[${n}]`);
 });
+
+describe("lists", () => {
+  type Rec = Record<string, unknown>;
+  const groceries = { id: "lst_g", name: "Groceries", kind: "checklist", open: 2, done: 0 };
+  const listTools = (o: { lists?: Rec[] } = {}) => {
+    const calls: [string, Rec][] = [];
+    const t = (name: string, out: (input: Rec) => Rec) =>
+      tool({ description: name, inputSchema: z.record(z.string(), z.unknown()), execute: async (input) => (calls.push([name, input as Rec]), out(input as Rec)) });
+    const tools: ToolSet = {
+      create_list: t("create_list", (i) => ({ ok: true, list: { id: "lst_new", name: i.name, kind: i.kind ?? "checklist", open: (i.items as unknown[]).length, done: 0 } })),
+      find_lists: t("find_lists", () => ({ ok: true, lists: o.lists ?? [groceries] })),
+      read_list: t("read_list", () => ({ ok: true, list: groceries, items: [{ id: "itm_m", text: "milk", done: false }, { id: "itm_b", text: "bread", done: false }] })),
+      change_list: t("change_list", () => ({ ok: true, list: groceries, added: [] })),
+      log_expense: t("log_expense", (i) => ({ ok: true, list: { id: "lst_e", name: "Expenses", kind: "expenses", open: 1, done: 0, total: i.amount, month: i.amount }, item: { text: i.text, amount: i.amount } })),
+    };
+    return { tools, calls };
+  };
+  const say = (prompt: string, tools: ToolSet) => streamText({ model: mockModel(), prompt, tools, stopWhen: isStepCount(6) }).text;
+
+  test("make a list from plain words", async () => {
+    const { tools, calls } = listTools();
+    expect(await say("make me a packing list for goa: sunscreen, swimsuit and charger", tools)).toBe("Done — your Packing for goa list has 3 items.");
+    expect(calls[0]).toEqual(["create_list", { name: "Packing for goa", kind: "checklist", items: ["sunscreen", "swimsuit", "charger"] }]);
+  });
+
+  test("add to a list found by name", async () => {
+    const { tools, calls } = listTools();
+    expect(await say("add eggs and butter to my groceries", tools)).toBe("Added eggs and butter to Groceries.");
+    expect(calls.map((c) => c[0])).toEqual(["find_lists", "change_list"]);
+    expect(calls[1][1]).toEqual({ id: "lst_g", add: ["eggs", "butter"] });
+    const none = listTools({ lists: [] });
+    expect(await say("add eggs to my groceries", none.tools)).toBe("I couldn't find a list called groceries.");
+  });
+
+  test("tick items off by name", async () => {
+    const { tools, calls } = listTools();
+    expect(await say("tick off milk on groceries", tools)).toBe("Ticked off milk.");
+    expect(calls.at(-1)).toEqual(["change_list", { id: "lst_g", tick: ["itm_m"] }]);
+  });
+
+  test("habits and expenses", async () => {
+    const { tools, calls } = listTools();
+    expect(await say("track my habits: run, read 20 pages", tools)).toBe("Tracking 2 habits.");
+    expect(calls[0]).toEqual(["create_list", { name: "Habits", kind: "habits", items: ["run", "read 20 pages"] }]);
+    expect(await say("I spent 250 on lunch", tools)).toBe("Logged Lunch: 250.");
+    expect(calls.at(-1)).toEqual(["log_expense", { text: "Lunch", amount: 250 }]);
+  });
+});

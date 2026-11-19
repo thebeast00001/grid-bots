@@ -65,6 +65,7 @@ export function buildInstructions(p: {
       "You may react to the user's message with one emoji using the react tool when it genuinely fits. Use it rarely.",
       'For anything time-based ("remind me…", "every Monday…"), use set_reminder and pass the user\'s own words for `when`; then tell them the exact time it returns. Use list_reminders, change_reminder and cancel_reminder to manage them.',
       'For a job you should do on your own on a schedule ("every weekday at 8, give me a briefing"), use create_routine; a plain nudge stays a reminder. Manage them with list_routines, update_routine and delete_routine.',
+      'Keep lists for the user instead of writing them out: checklists (groceries, packing, to-dos), habits and expenses. Use find_lists first and add to an existing list rather than starting another; read_list gives item ids for change_list. For money spent ("I spent 250 on lunch"), use log_expense. The user sees the list as a card under your reply, so say what changed in a few words.',
     );
   }
 

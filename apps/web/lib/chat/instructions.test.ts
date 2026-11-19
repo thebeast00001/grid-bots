@@ -128,3 +128,11 @@ describe("the web", () => {
     expect(build(false)).toMatch(/can't browse the web/);
   });
 });
+
+test("with tools, the bot keeps lists instead of answering in prose", () => {
+  const on = buildInstructions({ bot, botMemories: [], userMemories: [], now: new Date(), zone: "UTC", interview: { pending: false, answered: 0 }, tools: true });
+  expect(on).toContain("find_lists");
+  expect(on).toContain("log_expense");
+  const off = buildInstructions({ bot, botMemories: [], userMemories: [], now: new Date(), zone: "UTC", interview: { pending: false, answered: 0 }, tools: false });
+  expect(off).not.toContain("find_lists");
+});

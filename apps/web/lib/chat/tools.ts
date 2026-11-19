@@ -2,6 +2,7 @@ import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 import type { ReminderView } from "../client-types";
 import { HttpStatus } from "../http";
+import { makeListTools } from "../lists/tools";
 import { addMemory } from "../memory/repo";
 import { cancelReminder, createReminder, getReminder, listReminders, updateReminder } from "../reminders/repo";
 import { TIME_HELP } from "../reminders/resolve";
@@ -15,7 +16,7 @@ export const REACTIONS = ["❤️", "👍", "😂", "🔥", "👀", "😮"] as c
 const ASK = " Ask the user, then try again.";
 const NOT_FOUND = { ok: false as const, error: "No reminder with that id. Use list_reminders to find it." };
 
-/** Every bot's tools: remembering, reacting, reminders and routines. `zone` is the user's time zone. */
+/** Every bot's tools: remembering, reacting, reminders, routines and lists. `zone` is the user's time zone. */
 export type Rating = { importance: "high" | "normal" | "low"; headline: string };
 
 export function makeTools(p: { botId: string; lastUserMessageId?: string; zone: string; onRate?: (r: Rating) => void }): ToolSet {
@@ -216,5 +217,6 @@ export function makeTools(p: { botId: string; lastUserMessageId?: string; zone: 
         return r ? done(r) : NOT_FOUND;
       },
     }),
+    ...makeListTools({ botId: p.botId, zone }),
   };
 }

@@ -5,7 +5,8 @@ import { MockLanguageModelV4 } from "ai/test";
 /**
  * A deterministic model for automated tests (GRID_E2E=1 or Vitest only).
  * Precedence: interview marker → soul marker → routine run → research ("search for …", a link to
- * read) → "remind me … to …" → "every …" → "remember" → echo.
+ * read) → lists ("make me a … list: …", "add … to …", "i spent …") → "remind me … to …" → "every …"
+ * → "remember" → echo.
  */
 
 const SOUL = `# Test bot
@@ -152,6 +153,76 @@ function research(request: string, options: LanguageModelV4CallOptions, prompt: 
   return textParts(ns.length ? `Here's what I found about ${query} ${ns.map((n) => `[${n}]`).join("")}.` : "I couldn't read any of the pages.");
 }
 
+const splitItems = (s: string) =>
+  s
+    .split(/,\s*|\s+and\s+/i)
+    .map((x) => x.trim())
+    .filter(Boolean);
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * Lists: "make me a packing list for goa: a, b and c", "add a and b to my groceries", "tick off a
+ * on groceries", "track my habits: a, b", "i spent 250 on lunch".
+ */
+function listFlows(request: string, options: LanguageModelV4CallOptions, prompt: Prompt, tag: string): LanguageModelV4StreamPart[] | null {
+  const offered = (name: string) => !!options.tools?.some((t) => t.name === name);
+  const results = resultsSinceLastUser(prompt);
+  const got = (name: string) => results.filter((r) => r.toolName === name).map((r) => r.value).at(-1);
+  type Brief = { id: string; name: string };
+  const findByName = (want: string) => ((got("find_lists")?.lists ?? []) as Brief[]).find((l) => l.name.toLowerCase().includes(want.toLowerCase()));
+
+  const make = /^make (?:me )?an? (.+?) list(?: for (.+?))?\s*:\s*(.+)$/i.exec(request);
+  if (make) {
+    if (!offered("create_list")) return textParts("I can't keep lists here.");
+    const made = got("create_list");
+    const name = `${capital(make[1].trim())}${make[2] ? ` for ${make[2].trim()}` : ""}`;
+    if (!made) return toolCalls([{ name: "create_list", input: { name, kind: "checklist", items: splitItems(make[3]) } }], tag);
+    return textParts(made.ok ? `Done — your ${(made.list as Brief).name} list has ${(made.list as { open: number }).open} items.` : String(made.error));
+  }
+
+  const habits = /^track my habits\s*:\s*(.+)$/i.exec(request);
+  if (habits) {
+    const made = got("create_list");
+    if (!made) return toolCalls([{ name: "create_list", input: { name: "Habits", kind: "habits", items: splitItems(habits[1]) } }], tag);
+    return textParts(made.ok ? `Tracking ${(made.list as { open: number }).open} habits.` : String(made.error));
+  }
+
+  const spent = /^i spent (\d+(?:\.\d+)?) on (.+?)\.?$/i.exec(request);
+  if (spent) {
+    const logged = got("log_expense");
+    const text = capital(spent[2].trim());
+    if (!logged) return toolCalls([{ name: "log_expense", input: { text, amount: Number(spent[1]) } }], tag);
+    return textParts(logged.ok ? `Logged ${text}: ${spent[1]}.` : String(logged.error));
+  }
+
+  const add = /^add (.+?) to (?:my |the )?(.+?)(?: list)?$/i.exec(request);
+  if (add) {
+    if (!got("find_lists")) return toolCalls([{ name: "find_lists", input: {} }], tag);
+    const list = findByName(add[2].trim());
+    if (!list) return textParts(`I couldn't find a list called ${add[2].trim()}.`);
+    const items = splitItems(add[1]);
+    const changed = got("change_list");
+    if (!changed) return toolCalls([{ name: "change_list", input: { id: list.id, add: items } }], tag);
+    return textParts(changed.ok ? `Added ${items.join(" and ")} to ${list.name}.` : String(changed.error));
+  }
+
+  const tick = /^tick off (.+?) on (?:my |the )?(.+?)(?: list)?$/i.exec(request);
+  if (tick) {
+    if (!got("find_lists")) return toolCalls([{ name: "find_lists", input: {} }], tag);
+    const list = findByName(tick[2].trim());
+    if (!list) return textParts(`I couldn't find a list called ${tick[2].trim()}.`);
+    const read = got("read_list");
+    if (!read) return toolCalls([{ name: "read_list", input: { id: list.id } }], tag);
+    const wanted = splitItems(tick[1]).map((w) => w.toLowerCase());
+    const ids = ((read.items ?? []) as { id: string; text: string }[]).filter((i) => wanted.includes(i.text.toLowerCase())).map((i) => i.id);
+    if (!ids.length) return textParts(`I couldn't find ${tick[1]} on ${list.name}.`);
+    const changed = got("change_list");
+    if (!changed) return toolCalls([{ name: "change_list", input: { id: list.id, tick: ids } }], tag);
+    return textParts(changed.ok ? `Ticked off ${tick[1]}.` : String(changed.error));
+  }
+  return null;
+}
+
 function reply(options: LanguageModelV4CallOptions): LanguageModelV4StreamPart[] {
   const { prompt } = options;
   const system = systemText(prompt);
@@ -184,6 +255,9 @@ function reply(options: LanguageModelV4CallOptions): LanguageModelV4StreamPart[]
 
   const researched = research(last, options, prompt, `w${users.length}-${prompt.length}`);
   if (researched) return researched;
+
+  const listed = listFlows(last, options, prompt, `l${users.length}-${prompt.length}`);
+  if (listed) return listed;
 
   const remind = /remind me (.+?) to (.+)/i.exec(last);
   if (remind) {
