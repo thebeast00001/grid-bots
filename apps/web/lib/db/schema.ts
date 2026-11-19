@@ -1,6 +1,7 @@
-import { bigserial, boolean, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { bigserial, boolean, index, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import type { CritterConfig } from "../critter/types";
 import type { ModelRef } from "../models/types";
+import type { Repeat } from "../reminders/when";
 
 const createdAt = () => timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull();
 
@@ -67,7 +68,32 @@ export const files = pgTable("files", {
   createdAt: createdAt(),
 });
 
+const instant = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
+
+export const reminders = pgTable(
+  "reminders",
+  {
+    id: text("id").primaryKey(),
+    botId: text("bot_id")
+      .notNull()
+      .references(() => bots.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    /** The first time asked for; repeats are counted from it so month-ends don't drift. */
+    anchorAt: instant("anchor_at").notNull(),
+    dueAt: instant("due_at").notNull(),
+    repeat: text("repeat").$type<Repeat>().notNull().default("none"),
+    status: text("status").$type<"scheduled" | "fired" | "done" | "cancelled">().notNull().default("scheduled"),
+    firedAt: instant("fired_at"),
+    /** Delivered more than two minutes after it was due (Grid wasn't running). */
+    late: boolean("late").notNull().default(false),
+    sourceMessageId: text("source_message_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("reminders_due_idx").on(t.status, t.dueAt), index("reminders_bot_idx").on(t.botId)],
+);
+
 export type Memory = typeof memories.$inferSelect;
+export type ReminderRow = typeof reminders.$inferSelect;
 export type BotRow = typeof bots.$inferSelect;
 export type MessageRow = typeof messages.$inferSelect;
 export type ProviderRow = typeof providers.$inferSelect;

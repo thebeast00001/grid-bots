@@ -27,3 +27,19 @@ export async function hostId(): Promise<string> {
   await setSetting("hostId", id);
   return id;
 }
+
+/** True for an IANA time zone this runtime knows ("Asia/Kolkata"). */
+export function isZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The user's time zone (sent by their browser), else this computer's. */
+export async function userZone(): Promise<string> {
+  const zone = await getSetting<string>("timezone");
+  return zone && isZone(zone) ? zone : Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
