@@ -6,10 +6,12 @@ import { ChatView } from "@/components/chat/chat-view";
 import { useBots } from "@/components/shell/bots-store";
 import { api } from "@/lib/api-client";
 import { botVars } from "@/lib/critter/palette";
+import { usePhone } from "@/lib/use-media";
 
 export default function BotPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { bots } = useBots();
+  const phone = usePhone();
   const bot = bots?.find((b) => b.id === id);
   const [initial, setInitial] = useState<{ id: string; messages: UIMessage[] } | null>(null);
 
@@ -28,7 +30,7 @@ export default function BotPage({ params }: { params: Promise<{ id: string }> })
 
   return (
     <div className="flex w-full" style={botVars(bot.avatar.color)}>
-      <ChatView key={bot.id} bot={bot} initial={initial.messages} />
+      <ChatView key={bot.id} bot={bot} initial={initial.messages} mobile={phone} />
     </div>
   );
 }

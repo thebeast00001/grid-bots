@@ -6,6 +6,7 @@ import { useBots } from "@/components/shell/bots-store";
 import { Studio, type BotDraft } from "@/components/studio/studio";
 import { api } from "@/lib/api-client";
 import type { BotView } from "@/lib/client-types";
+import { usePhone } from "@/lib/use-media";
 
 const newId = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(5));
@@ -15,6 +16,7 @@ const newId = () => {
 export default function NewBot() {
   const router = useRouter();
   const { upsert } = useBots();
+  const phone = usePhone();
   const [botId] = useState(newId);
   // Studio calls create() then onCreated() from one async flow, so hand the bot over in a ref.
   const created = useRef<BotView | null>(null);
@@ -22,7 +24,7 @@ export default function NewBot() {
   return (
     <Studio
       botId={botId}
-      compact={false}
+      compact={phone}
       onCancel={() => router.back()}
       create={async (draft: BotDraft) => {
         created.current = await api<BotView>("/api/bots", { method: "POST", body: JSON.stringify(draft) });

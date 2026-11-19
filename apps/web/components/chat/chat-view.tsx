@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowDown, PanelRight, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowDown, ArrowLeft, PanelRight, RotateCcw, Sparkles } from "lucide-react";
+import { Sheet } from "@/components/shell/sheet";
 import { toast } from "sonner";
 import { MemoryList } from "@/components/profile/memory-list";
 import { ProfilePanel } from "@/components/profile/profile-panel";
@@ -204,6 +205,16 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
     <div className="flex h-full min-h-0 w-full">
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
         <div className="relative min-h-0 flex-1">
+          {mobile && (
+            <Link
+              href="/bots"
+              aria-label="Back"
+              className="press absolute left-3 top-3 z-20 grid size-10 place-items-center rounded-full backdrop-blur-xl edge"
+              style={{ background: "color-mix(in oklch, var(--surface) 80%, transparent)" }}
+            >
+              <ArrowLeft size={18} />
+            </Link>
+          )}
           <div className="absolute right-3 top-3 z-20 md:right-4">
             <button
               onClick={() => setPanelOpen((o) => !o)}
@@ -347,7 +358,19 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
         />
       </div>
 
-      {panelOpen && (
+      {mobile && (
+        <AnimatePresence>
+          {panelOpen && (
+            <Sheet label={`${bot.name}'s profile`} onClose={() => setPanelOpen(false)}>
+              <ProfilePanel bot={bot} onClose={() => setPanelOpen(false)}>
+                <MemoryList bot={bot} version={memoryVersion} />
+              </ProfilePanel>
+            </Sheet>
+          )}
+        </AnimatePresence>
+      )}
+
+      {panelOpen && !mobile && (
         <motion.div
           initial={{ opacity: 0, x: 12 }}
           animate={{ opacity: 1, x: 0 }}
