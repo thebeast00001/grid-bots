@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { refreshReminders } from "@/components/reminders/reminders-store";
+import { refreshRoutines } from "@/components/routines/routines-store";
+import { setBotStatus } from "@/lib/bot-status-store";
 import { api } from "@/lib/api-client";
 import type { GridEvent } from "@/lib/events";
 import { useBots } from "./bots-store";
@@ -76,7 +78,15 @@ export function LiveEvents() {
         refreshReminders(e.botId).catch(() => {});
         return;
       }
-      if (e.type !== "message") return;
+      if (e.type === "routines") {
+        refreshRoutines(e.botId).catch(() => {});
+        return;
+      }
+      if (e.type === "run") {
+        // The open chat shows this itself; the list shows it for every other bot.
+        if (where.current !== `/bots/${e.botId}`) setBotStatus(e.botId, e.status === "running" ? { pose: "working", text: `Working on ${e.name}…` } : { pose: "idle", text: "" });
+        return;
+      }
       const url = `/bots/${e.botId}`;
       const open = where.current === url;
       const visible = document.visibilityState === "visible";

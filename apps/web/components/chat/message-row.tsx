@@ -6,7 +6,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { BookmarkPlus, CornerUpLeft, FileText, Pencil, Pin, RotateCcw } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { ReminderChip, ReminderDueCard, ReminderPending, ReminderSetCard, type DueData, type Occurrence } from "@/components/reminders/reminder-card";
-import type { ReminderView } from "@/lib/client-types";
+import { RoutineChip, RoutineHeader, RoutinePending, RoutineSetCard, type RoutineData } from "@/components/routines/routine-card";
+import type { ReminderView, RoutineView } from "@/lib/client-types";
 import { ease, spring } from "@/lib/motion";
 
 export const REACTIONS = ["❤️", "👍", "😂", "🔥", "👀"];
@@ -41,15 +42,28 @@ const textOf = (m: UIMessage) =>
     .join("")
     .trim();
 
-type ToolOut = { ok?: boolean; reminder?: ReminderView };
+type ToolOut = { ok?: boolean; reminder?: ReminderView; routine?: RoutineView };
 
-/** Cards for the reminder tools' results and for a reminder going off. */
+/** Cards for the reminder and routine tools' results and for a reminder going off. */
 function ReminderParts({ m, botId, fresh }: { m: UIMessage; botId: string; fresh: boolean }) {
   const out: React.ReactNode[] = [];
   m.parts.forEach((p, i) => {
     if (p.type === "data-reminder") {
       const occurrence = (m.metadata as { reminder?: Occurrence } | undefined)?.reminder;
       out.push(<ReminderDueCard key={i} botId={botId} messageId={m.id} data={(p as { data: DueData }).data} occurrence={occurrence} fresh={fresh} />);
+      return;
+    }
+    if (p.type === "tool-create_routine" || p.type === "tool-update_routine" || p.type === "tool-delete_routine") {
+      if (!("state" in p)) return;
+      if (p.state === "input-streaming" || p.state === "input-available") {
+        if (p.type === "tool-create_routine") out.push(<RoutinePending key={i} />);
+        return;
+      }
+      const res = p.state === "output-available" ? (p.output as ToolOut) : null;
+      if (!res?.ok) return;
+      if (p.type === "tool-create_routine" && res.routine) out.push(<RoutineSetCard key={i} botId={botId} routine={res.routine} />);
+      else if (p.type === "tool-update_routine" && res.routine) out.push(<RoutineChip key={i} kind="updated" routine={res.routine} />);
+      else if (p.type === "tool-delete_routine") out.push(<RoutineChip key={i} kind="deleted" />);
       return;
     }
     const kind = p.type === "tool-set_reminder" ? "set" : p.type === "tool-change_reminder" ? "changed" : p.type === "tool-cancel_reminder" ? "cancelled" : null;
@@ -79,6 +93,9 @@ export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, ani
   const files = m.parts.filter((p) => p.type === "file");
   // A reminder going off shows as its card, not as the plain "⏰ …" text kept for the model.
   const isReminder = m.parts.some((p) => p.type === "data-reminder");
+  const routine = (m.parts.find((p) => p.type === "data-routine") as { data: RoutineData } | undefined)?.data;
+  // Messages a bot wrote on its own (a reminder, a routine) have no reaction bar.
+  const isAuto = isReminder || !!routine;
   const text = isReminder ? "" : textOf(m);
   const fine = typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
@@ -103,7 +120,7 @@ export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, ani
         onPointerCancel={() => clearTimeout(press.current)}
       >
         <AnimatePresence>
-          {toolbar && !editing && !streaming && !isReminder && (
+          {toolbar && !editing && !streaming && !isAuto && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 4 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -169,6 +186,8 @@ export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, ani
             )}
           </div>
         )}
+
+        {routine && <RoutineHeader botId={botId} data={routine} />}
 
         {editing ? (
           <EditBox

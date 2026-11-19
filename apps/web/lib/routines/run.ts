@@ -24,7 +24,7 @@ const HISTORY = 20;
 
 export type RoutinePart = {
   type: "data-routine";
-  data: { routineId: string; runId: string; name: string; status: "done" | "failed"; error?: string; action?: { label: string; href: string }; late: boolean };
+  data: { routineId: string; runId: string; name: string; status: "done" | "failed"; error?: string; action?: { label: string; href: string }; late: boolean; at: string };
 };
 
 /** What the bot is told when its routine comes round (never stored in the chat). */
@@ -167,7 +167,7 @@ async function finishRun(r: RoutineRow, runId: string, lateRun: boolean, fallbac
     failed = failureOf(e);
   }
 
-  const part: RoutinePart = { type: "data-routine", data: { routineId: r.id, runId, name: r.name, status, late: !!opts.late, ...failed } };
+  const part: RoutinePart = { type: "data-routine", data: { routineId: r.id, runId, name: r.name, status, late: !!opts.late, at: new Date().toISOString(), ...failed } };
   let saved = false;
   try {
     await db.insert(messages).values({ id: messageId, botId: r.botId, role: "assistant", parts: [part, ...parts], metadata: { routineId: r.id, runId } });

@@ -80,8 +80,11 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
       // The next event or a reload will catch up.
     }
   };
+  const [routineRun, setRoutineRun] = useState<string | null>(null);
   useLiveEvent((e) => {
-    if (e.type === "message" && e.botId === bot.id) void appendFromServer();
+    if (e.botId !== bot.id) return;
+    if (e.type === "message") void appendFromServer();
+    if (e.type === "run") setRoutineRun(e.status === "running" ? e.name : null);
   });
   useEffect(() => {
     markRead(bot.id);
@@ -145,7 +148,9 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
   const chatError = error ? parseChatError(error) : null;
   const derived: BotStatus = writing
     ? { pose: "working", text: "Writing my soul…" }
-    : deriveStatus({ chat: status, last: messages.at(-1), error: chatError, justFinished });
+    : routineRun && status === "ready"
+      ? { pose: "working", text: `Working on ${routineRun}…` }
+      : deriveStatus({ chat: status, last: messages.at(-1), error: chatError, justFinished });
   useEffect(() => setBotStatus(bot.id, derived), [bot.id, derived.pose, derived.text]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => setBotStatus(bot.id, { pose: "idle", text: "" }), [bot.id]);
 
