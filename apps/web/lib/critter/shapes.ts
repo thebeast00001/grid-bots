@@ -79,7 +79,12 @@ export const SHAPE_RADII: Record<ShapeId, number[]> = Object.fromEntries(
 
 export const lerpRadii = (a: number[], b: number[], p: number) => a.map((v, i) => v + (b[i] - v) * p);
 
-const f = (v: number) => v.toFixed(3);
+/** A path number. Never "-0.000": the server's and the browser's maths can land either side of zero, and the paths must match for hydration. */
+export const fmt = (v: number) => {
+  const s = v.toFixed(3);
+  return s === "-0.000" ? "0.000" : s;
+};
+const f = fmt;
 
 export type Geometry = {
   d: string;
