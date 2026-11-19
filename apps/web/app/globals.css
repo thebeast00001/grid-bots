@@ -173,6 +173,9 @@ body { overflow: hidden; }
 .crit-zzz text { opacity: 0; animation: crit-z 2.4s ease-out infinite; }
 
 .crit[data-paused] *, .crit[data-paused] { animation-play-state: paused !important; }
+/* Big avatars are moved by the motion loop (lib/critter/motion.ts), including their lean. */
+.crit[data-engine] .crit-breathe, .crit[data-engine] .crit-acc { animation: none !important; }
+.crit[data-engine][data-pose="waiting"] .crit-pose { transform: none; }
 .crit[data-static] * { animation: none !important; }
 
 @keyframes crit-breathe {

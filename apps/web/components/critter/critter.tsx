@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { animate, motion, useReducedMotion, useSpring } from "motion/react";
+import { POSE_MOTION, bodyTransform, initialMotion, step } from "@/lib/critter/motion";
 import { PALETTE, eyeInk, ok, type Swatch } from "@/lib/critter/palette";
 import { SHAPE_RADII, geometry, lerpRadii } from "@/lib/critter/shapes";
 import type { AccId, CritterConfig, EyeId, Pose } from "@/lib/critter/types";
@@ -149,6 +150,32 @@ export function Critter({
   const visibleRef = useRef(true);
   const poseRef = useRef(pose);
   poseRef.current = pose;
+
+  // ── body motion: big avatars glide between moods (lib/critter/motion.ts) ──
+  // Small ones (lists) keep the cheap CSS breathing.
+  const breatheRef = useRef<SVGGElement>(null);
+  const accRef = useRef<SVGGElement>(null);
+  const engine = animated && !reduce && size >= 48;
+  useEffect(() => {
+    if (!engine) return;
+    let state = initialMotion(poseRef.current);
+    let last = performance.now();
+    let raf = 0;
+    const frame = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (visibleRef.current && !document.hidden) {
+        state = step(state, POSE_MOTION[poseRef.current], dt);
+        const t = bodyTransform(state);
+        if (breatheRef.current) breatheRef.current.style.transform = `translateY(${t.y}px) rotate(${t.rot}deg) scale(${t.sx}, ${t.sy})`;
+        // Accessories ride a little higher, so they seem to float.
+        if (accRef.current) accRef.current.style.transform = `translateY(${t.y * 1.35}px) rotate(${t.rot * 0.6}deg)`;
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [engine]);
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return;
@@ -223,6 +250,7 @@ export function Critter({
       height={size}
       data-pose={pose}
       data-static={animated && !reduce ? undefined : ""}
+      data-engine={engine ? "" : undefined}
       className={`crit ${pettable ? "cursor-pointer" : ""} ${className}`}
       style={{ overflow: "visible", ["--d" as string]: `${delay}s` }}
       role="img"
@@ -265,7 +293,7 @@ export function Critter({
 
       <g ref={petRef} className="crit-pet">
         <g className="crit-pose">
-          <g className="crit-breathe">
+          <g ref={breatheRef} className="crit-breathe">
             {showLeaf && <Leaf y={A.top + 0.06} />}
             <g filter={fuzzy ? `url(#f${uid})` : undefined}>
               <path d={geo.d} fill={`url(#g${uid}b)`} />
@@ -329,7 +357,7 @@ export function Critter({
               </g>
             )}
           </g>
-          <g className="crit-acc">
+          <g ref={accRef} className="crit-acc">
             <Accessory id={cfg.acc} A={A} s={s} />
           </g>
         </g>
