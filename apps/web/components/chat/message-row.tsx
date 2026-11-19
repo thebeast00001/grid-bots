@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { BookmarkPlus, CornerUpLeft, FileText, Pencil, Pin, RotateCcw } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { ReminderChip, ReminderDueCard, ReminderPending, ReminderSetCard, type DueData, type Occurrence } from "@/components/reminders/reminder-card";
+import { ListCard } from "@/components/lists/list-card";
 import { ResearchStrip } from "@/components/research/research-strip";
 import { SourceChips, citeComponentsFor } from "@/components/research/source-chips";
 import { citeLinks, shownSources, sourcesOf } from "@/components/research/sources";
@@ -46,6 +47,19 @@ const textOf = (m: UIMessage) =>
     .trim();
 
 type ToolOut = { ok?: boolean; reminder?: ReminderView; routine?: RoutineView };
+
+const LIST_TOOLS = new Set(["tool-create_list", "tool-change_list", "tool-read_list", "tool-log_expense"]);
+
+/** The lists a reply made, changed or looked at: each shows once, live. */
+function listIdsOf(m: UIMessage): string[] {
+  const ids: string[] = [];
+  for (const p of m.parts) {
+    if (!LIST_TOOLS.has(p.type) || !("state" in p) || p.state !== "output-available") continue;
+    const id = (p.output as { ok?: boolean; list?: { id?: string } } | undefined)?.list?.id;
+    if (id && !ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
 
 /** Cards for the reminder and routine tools' results and for a reminder going off. */
 function ReminderParts({ m, botId, fresh }: { m: UIMessage; botId: string; fresh: boolean }) {
@@ -230,6 +244,8 @@ export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, ani
         )}
 
         {!mine && !editing && <SourceChips sources={chips} />}
+
+        {!mine && listIdsOf(m).map((id) => <ListCard key={id} id={id} />)}
 
         {!mine && <ReminderParts m={m} botId={botId} fresh={isNew} />}
 

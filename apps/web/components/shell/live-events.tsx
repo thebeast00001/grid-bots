@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { refreshReminders } from "@/components/reminders/reminders-store";
 import { addNotification, refreshInbox, useInbox } from "@/components/notifications/notifications-store";
+import { refreshAllLists } from "@/components/lists/lists-store";
 import { refreshRoutines } from "@/components/routines/routines-store";
 import { setBotStatus } from "@/lib/bot-status-store";
 import { api } from "@/lib/api-client";
@@ -88,6 +89,10 @@ export function LiveEvents() {
       }
       if (e.type === "inbox") {
         refreshInbox().catch(() => {});
+        return;
+      }
+      if (e.type === "lists") {
+        refreshAllLists();
         return;
       }
       if (e.type === "notification") {

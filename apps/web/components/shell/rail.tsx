@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Cpu, Home, Moon, Sun } from "lucide-react";
+import { Cpu, Home, ListChecks, Moon, Sun } from "lucide-react";
 import { InboxButton } from "@/components/notifications/inbox";
 
 function GridMark() {
@@ -55,6 +55,7 @@ export function Rail() {
 
   const items = [
     { href: "/", icon: Home, label: "Home", active: pathname === "/" || pathname.startsWith("/bots") || pathname === "/new" },
+    { href: "/lists", icon: ListChecks, label: "Lists", active: pathname.startsWith("/lists") },
     { href: "/settings/models", icon: Cpu, label: "Models", active: pathname.startsWith("/settings") },
   ];
 

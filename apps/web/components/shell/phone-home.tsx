@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Cpu, Plus } from "lucide-react";
+import { Cpu, ListChecks, Plus } from "lucide-react";
 import { Critter } from "@/components/critter/critter";
 import { InboxButton } from "@/components/notifications/inbox";
 import { useBotStatus } from "@/lib/bot-status-store";
@@ -29,6 +29,9 @@ export function PhoneHome() {
         <span className="text-[20px] font-semibold tracking-tight">Grid</span>
         <div className="flex gap-1">
           <InboxButton phone />
+          <Link href="/lists" aria-label="Lists" className="press hover-surface grid size-10 place-items-center rounded-full">
+            <ListChecks size={20} />
+          </Link>
           <Link href="/settings/models" aria-label="Models" className="press hover-surface grid size-10 place-items-center rounded-full">
             <Cpu size={19} />
           </Link>

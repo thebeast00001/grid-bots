@@ -18,7 +18,16 @@ export function parseChatError(e: unknown): ChatError {
   return { code: "unknown", message: raw };
 }
 
-const TOOL_LABELS: Record<string, string> = { "tool-remember": "Remembering…", "tool-react": "Reacting…", "tool-web_search": "Searching the web…" };
+const TOOL_LABELS: Record<string, string> = {
+  "tool-remember": "Remembering…",
+  "tool-react": "Reacting…",
+  "tool-web_search": "Searching the web…",
+  "tool-create_list": "Making a list…",
+  "tool-change_list": "Updating a list…",
+  "tool-log_expense": "Logging it…",
+  "tool-find_lists": "Checking your lists…",
+  "tool-read_list": "Checking your lists…",
+};
 const pending = (part: UIMessage["parts"][number]) => "state" in part && part.state !== "output-available" && part.state !== "output-error";
 
 /** What the bot's face and status line should show for the chat's current state. */
