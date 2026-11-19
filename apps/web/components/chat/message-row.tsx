@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { UIMessage } from "ai";
 import { AnimatePresence, motion } from "motion/react";
 import { BookmarkPlus, CornerUpLeft, FileText, Pencil, Pin, RotateCcw } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { ReminderChip, ReminderDueCard, ReminderPending, ReminderSetCard, type DueData, type Occurrence } from "@/components/reminders/reminder-card";
+import { ResearchStrip } from "@/components/research/research-strip";
+import { SourceChips, citeComponents } from "@/components/research/source-chips";
+import { citeLinks, shownSources, sourcesOf } from "@/components/research/sources";
 import { RoutineChip, RoutineHeader, RoutinePending, RoutineSetCard, type RoutineData } from "@/components/routines/routine-card";
 import type { ReminderView, RoutineView } from "@/lib/client-types";
 import { ease, spring } from "@/lib/motion";
@@ -97,6 +100,10 @@ export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, ani
   // Messages a bot wrote on its own (a reminder, a routine) have no reaction bar.
   const isAuto = isReminder || !!routine;
   const text = isReminder ? "" : textOf(m);
+  // Research: numbered sources, citation links in the text, chips under it.
+  const sources = useMemo(() => (mine ? [] : sourcesOf(m.parts)), [m.parts, mine]);
+  const components = useMemo(() => citeComponents(sources), [sources]);
+  const chips = sources.length ? shownSources(sources, text) : sources;
   const fine = typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
   return (
@@ -189,6 +196,8 @@ export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, ani
 
         {routine && <RoutineHeader botId={botId} data={routine} />}
 
+        {!mine && <ResearchStrip parts={m.parts} answered={!!text} />}
+
         {editing ? (
           <EditBox
             initial={text}
@@ -208,10 +217,18 @@ export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, ani
                   : { borderBottomLeftRadius: lastOfGroup ? 6 : 20 }
               }
             >
-              {mine ? text : <Streamdown animated={{ animation: "blurIn", duration: 160 }} isAnimating={streaming}>{text}</Streamdown>}
+              {mine ? (
+                text
+              ) : (
+                <Streamdown animated={{ animation: "blurIn", duration: 160 }} isAnimating={streaming} components={components}>
+                  {sources.length ? citeLinks(text, sources) : text}
+                </Streamdown>
+              )}
             </div>
           )
         )}
+
+        {!mine && !editing && <SourceChips sources={chips} />}
 
         {!mine && <ReminderParts m={m} botId={botId} fresh={isNew} />}
 

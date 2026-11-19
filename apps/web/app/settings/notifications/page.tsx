@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { spring } from "@/lib/motion";
 import type { PingFor, QuietHours } from "@/lib/notifications/rules";
+import { SettingsNav } from "@/components/settings/settings-nav";
 
 type Settings = { quietHours: QuietHours; pingFor: PingFor };
 type Device = "unsupported" | "blocked" | "off" | "tab" | "push";
@@ -108,14 +109,7 @@ export default function NotificationSettings() {
           </Link>
           <h1 className="text-[17px] font-semibold">Notifications</h1>
         </header>
-        <nav className="mb-6 inline-flex rounded-full bg-[var(--surface-2)] p-1 text-[13px]">
-          <Link href="/settings/models" className="press rounded-full px-3 py-1 text-[var(--text-2)]">
-            Models
-          </Link>
-          <span className="rounded-full bg-[var(--surface)] px-3 py-1 font-medium edge" aria-current="page">
-            Notifications
-          </span>
-        </nav>
+        <SettingsNav current="Notifications" />
 
         <section aria-labelledby="device-heading" className={`${card} mb-4`}>
           <h2 id="device-heading" className="text-[15px] font-semibold">
