@@ -13,6 +13,8 @@ export type GridEvent =
   | { type: "notification"; notification: NotificationView }
   /** Notifications were marked read (another tab should refresh its counts). */
   | { type: "inbox" }
+  /** A list, its items or its check-ins changed. */
+  | { type: "lists" }
   | { type: "run"; botId: string; routineId: string; runId: string; name: string; status: "running" | "done" | "failed" };
 
 const g = globalThis as unknown as { __gridBus?: EventEmitter };

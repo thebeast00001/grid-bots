@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { bigserial, boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { bigint, bigserial, boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type { CritterConfig } from "../critter/types";
 import type { ModelRef } from "../models/types";
 import type { Repeat } from "../reminders/when";
@@ -177,3 +177,57 @@ export type BotRow = typeof bots.$inferSelect;
 export type MessageRow = typeof messages.$inferSelect;
 export type ProviderRow = typeof providers.$inferSelect;
 export type FileRow = typeof files.$inferSelect;
+
+export type ListKind = "checklist" | "habits" | "expenses";
+
+/** The user's lists: checklists, habit trackers, expenses. Any bot can use them; bot_id is the one that made it. */
+export const lists = pgTable(
+  "lists",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    kind: text("kind").$type<ListKind>().notNull(),
+    botId: text("bot_id").references(() => bots.id, { onDelete: "set null" }),
+    /** ISO 4217 code for an expenses list; null = show plain numbers. */
+    currency: text("currency"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+  },
+  (t) => [index("lists_updated_idx").on(t.updatedAt)],
+);
+
+export const listItems = pgTable(
+  "list_items",
+  {
+    id: text("id").primaryKey(),
+    listId: text("list_id")
+      .notNull()
+      .references(() => lists.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    done: boolean("done").notNull().default(false),
+    doneAt: instant("done_at"),
+    position: integer("position").notNull().default(0),
+    /** Expenses: hundredths of the list's currency. */
+    amount: bigint("amount", { mode: "number" }),
+    /** Expenses: the day it was spent (YYYY-MM-DD, user's zone). */
+    spentOn: text("spent_on"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("list_items_list_idx").on(t.listId, t.position)],
+);
+
+/** A habit done on a day (YYYY-MM-DD in the user's zone). */
+export const habitCheckins = pgTable(
+  "habit_checkins",
+  {
+    itemId: text("item_id")
+      .notNull()
+      .references(() => listItems.id, { onDelete: "cascade" }),
+    day: text("day").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.itemId, t.day] })],
+);
+
+export type ListRow = typeof lists.$inferSelect;
+export type ListItemRow = typeof listItems.$inferSelect;

@@ -92,3 +92,41 @@ export type ReminderView = {
   late: boolean;
   firedAt: string | null;
 };
+
+export type ListKind = "checklist" | "habits" | "expenses";
+
+export type ItemView = {
+  id: string;
+  text: string;
+  done: boolean;
+  doneAt: string | null;
+  position: number;
+  /** Expenses: hundredths of the list's currency. */
+  amount: number | null;
+  /** Expenses: YYYY-MM-DD. */
+  spentOn: string | null;
+  /** Habits: the checked days among the list's `days`. */
+  checkins?: string[];
+  /** Habits: consecutive days up to today (or yesterday, if today isn't checked yet). */
+  streak?: number;
+};
+
+export type ListView = {
+  id: string;
+  name: string;
+  kind: ListKind;
+  botId: string | null;
+  currency: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: ItemView[];
+  /** Checklist: not done. Habits: not checked in today. Expenses: entries. */
+  open: number;
+  /** Checklist: done. Habits: checked in today. */
+  done: number;
+  /** Expenses, in hundredths: all time and this calendar month. */
+  total?: number;
+  month?: number;
+  /** Habits: the last 7 days, oldest first, ending today. */
+  days?: string[];
+};
