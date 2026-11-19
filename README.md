@@ -2,7 +2,7 @@
 
 **Your AI team, open source.** Make a bot with a face, a name and a job in ten seconds. It interviews you, writes its own soul, remembers what matters, and runs on any model: your ChatGPT plan, an API key, or a model on your own machine.
 
-> Status: milestone 1 ("First bot") plus the first of the [next 50 features](docs/superpowers/specs/2026-11-19-next-50-features-design.md). Bots chat, interview you, keep visible memory, run on 12 kinds of model provider, and set reminders from plain words ("remind me Friday 6pm to pay rent", "every 1st of the month") that go off right in the chat, with Done, Snooze and a notification. Apps, routines and the bot's own computer come next; see [PLAN.md](PLAN.md).
+> Status: milestone 1 ("First bot") plus the first two of the [next 50 features](docs/superpowers/specs/2026-11-19-next-50-features-design.md). Bots chat, interview you, keep visible memory, run on 12 kinds of model provider, and set reminders from plain words ("remind me Friday 6pm to pay rent", "every 1st of the month") that go off right in the chat, with Done, Snooze and a notification. Bots also take on routines ("every weekday at 8, give me a briefing"): standing jobs they do on their own and post into the chat, with Run now, pause and a history. Web research, lists, apps and the bot's own computer come next; see [PLAN.md](PLAN.md).
 
 ## Run it
 

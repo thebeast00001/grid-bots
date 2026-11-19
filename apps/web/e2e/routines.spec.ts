@@ -19,6 +19,8 @@ test("ask for a routine in chat, run it now, see the result arrive live", async 
   await expect(card).toBeVisible();
   await expect(card).toContainText("Weekdays at 8:00 AM");
   await expect(card).toContainText(/Next .*8:00 AM/);
+  // The instruction isn't repeated when it says the same as the name.
+  await expect(card.getByText("give me a briefing", { exact: true })).toHaveCount(0);
 
   await card.getByRole("button", { name: "Run now" }).click();
   const result = page.getByTestId("routine-result").filter({ hasText: "Give me a briefing" });

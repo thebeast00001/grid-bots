@@ -72,7 +72,9 @@ export function RoutineSetCard({ botId, routine }: { botId: string; routine: Rou
         </span>
         <div className="min-w-0 flex-1">
           <div className={`break-words text-[14.5px] font-semibold leading-snug ${gone ? "line-through decoration-[var(--text-3)]" : ""}`}>{r.name}</div>
-          <div className="line-clamp-2 break-words text-[12.5px] text-[var(--text-2)]">{r.instruction}</div>
+          {r.instruction.trim().toLowerCase() !== r.name.trim().toLowerCase() && (
+            <div className="line-clamp-2 break-words text-[12.5px] text-[var(--text-2)]">{r.instruction}</div>
+          )}
           <div className="mt-1 text-[12.5px] text-[var(--text-2)]">{r.scheduleLabel}</div>
           <div className="tnum text-[12px] text-[var(--text-3)]">{gone ? "Deleted" : routineStatus(r, now)}</div>
         </div>
