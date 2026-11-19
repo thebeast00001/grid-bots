@@ -9,6 +9,7 @@ import { errorResponse, notFound, readJson } from "@/lib/http";
 import { listMemories } from "@/lib/memory/repo";
 import { toGridError } from "@/lib/models/errors";
 import { resolveModel } from "@/lib/models/resolve";
+import { userZone } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -55,8 +56,10 @@ export async function POST(req: Request) {
     const resolved = await resolveModel(bot.model);
 
     const [botMemories, userMemories] = await Promise.all([listMemories(bot.id), listMemories(null)]);
+    const zone = await userZone();
     const instructions = buildInstructions({
       bot,
+      zone,
       botMemories,
       userMemories,
       now: new Date(),
@@ -66,7 +69,7 @@ export async function POST(req: Request) {
 
     const thread = trimHistory(history);
     const lastUser = [...thread].reverse().find((m) => m.role === "user");
-    const tools = resolved.tools && lastUser ? makeTools({ botId: bot.id, lastUserMessageId: lastUser.id }) : undefined;
+    const tools = resolved.tools && lastUser ? makeTools({ botId: bot.id, lastUserMessageId: lastUser.id, zone }) : undefined;
     const messages = await convertToModelMessages(await inlineFileParts(thread), { tools });
 
     const result = streamText({ model: resolved.model, instructions, messages, tools, stopWhen: isStepCount(4) });

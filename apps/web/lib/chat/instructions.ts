@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import type { Bot } from "../bots/repo";
 import type { Memory } from "../db/schema";
 
@@ -18,11 +19,18 @@ export function pickMemories(all: Memory[], budgetChars = 6000): Memory[] {
 
 const bullets = (items: string[]) => (items.length ? items.map((i) => `- ${i}`).join("\n") : "- (none yet)");
 
+function localTime(now: Date, zone: string): string {
+  const d = DateTime.fromJSDate(now, { zone }).setLocale("en-US");
+  return `${d.toFormat("cccc, d LLLL yyyy, h:mm a")} (${zone}) (${d.toISODate()})`;
+}
+
 export function buildInstructions(p: {
   bot: Bot;
   botMemories: Memory[];
   userMemories: Memory[];
   now: Date;
+  /** The user's IANA time zone; times are given to the bot in it. */
+  zone: string;
   interview: { pending: boolean; answered: number };
   tools: boolean;
 }): string {
@@ -35,6 +43,7 @@ export function buildInstructions(p: {
     rules.push(
       "When the user shares something worth keeping about themselves (preferences, people, plans, facts), save it with the remember tool (about: \"user\"). Save notes about how to do your job with about: \"self\". Don't announce routine saves.",
       "You may react to the user's message with one emoji using the react tool when it genuinely fits. Use it rarely.",
+      'For anything time-based ("remind me…", "every Monday…"), use set_reminder and pass the user\'s own words for `when`; then tell them the exact time it returns. Use list_reminders, change_reminder and cancel_reminder to manage them.',
     );
   }
 
@@ -45,7 +54,7 @@ export function buildInstructions(p: {
     `# Standing instructions from the user\n${bullets(bot.instructions)}`,
     `# About the user\n${bullets(pickMemories(p.userMemories).map((m) => m.text))}`,
     `# Your notes\n${bullets(pickMemories(p.botMemories).map((m) => m.text))}`,
-    `Current date and time: ${p.now.toUTCString()} (${p.now.toISOString().slice(0, 10)}).`,
+    `Current date and time: ${localTime(p.now, p.zone)}.`,
   ];
 
   if (p.interview.pending && p.interview.answered >= INTERVIEW_QUESTIONS) {

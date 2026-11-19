@@ -39,6 +39,7 @@ test("instructions put the soul before memories and include standing instruction
     botMemories: [mem("1", "Prefers Tuesday meetings", { botId: "b1" })],
     userMemories: [mem("2", "Name is Ansh")],
     now: new Date("2026-11-18T10:00:00Z"),
+    zone: "UTC",
     interview: { pending: false, answered: 0 },
     tools: true,
   });
@@ -52,14 +53,34 @@ test("instructions put the soul before memories and include standing instruction
 });
 
 test("after the fifth answer the bot wraps up instead of asking more", () => {
-  const text = buildInstructions({ bot: { ...bot, soul: "" }, botMemories: [], userMemories: [], now: new Date(), interview: { pending: true, answered: 5 }, tools: false });
+  const text = buildInstructions({ bot: { ...bot, soul: "" }, botMemories: [], userMemories: [], now: new Date(), zone: "UTC", interview: { pending: true, answered: 5 }, tools: false });
   expect(text).not.toContain("[[interview]]");
   expect(text).toContain("interview is complete");
 });
 
 test("the interview marker appears only while the interview is pending", () => {
-  const text = buildInstructions({ bot: { ...bot, soul: "" }, botMemories: [], userMemories: [], now: new Date(), interview: { pending: true, answered: 2 }, tools: false });
+  const text = buildInstructions({ bot: { ...bot, soul: "" }, botMemories: [], userMemories: [], now: new Date(), zone: "UTC", interview: { pending: true, answered: 2 }, tools: false });
   expect(text).toContain("[[interview]]");
   expect(text).toContain("question 3 of 5");
   expect(text).not.toContain("remember tool");
+});
+
+test("the current time is given in the user's own zone", () => {
+  const text = buildInstructions({
+    bot,
+    botMemories: [],
+    userMemories: [],
+    now: new Date("2026-11-19T04:30:00Z"),
+    zone: "Asia/Kolkata",
+    interview: { pending: false, answered: 0 },
+    tools: false,
+  });
+  expect(text).toContain("Thursday, 19 November 2026, 10:00 AM (Asia/Kolkata)");
+});
+
+test("with tools on, the bot is told to use set_reminder for anything time-based", () => {
+  const text = buildInstructions({ bot, botMemories: [], userMemories: [], now: new Date(), zone: "UTC", interview: { pending: false, answered: 0 }, tools: true });
+  expect(text).toContain("set_reminder");
+  const off = buildInstructions({ bot, botMemories: [], userMemories: [], now: new Date(), zone: "UTC", interview: { pending: false, answered: 0 }, tools: false });
+  expect(off).not.toContain("set_reminder");
 });

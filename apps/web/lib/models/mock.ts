@@ -4,7 +4,7 @@ import { MockLanguageModelV4 } from "ai/test";
 
 /**
  * A deterministic model for automated tests (GRID_E2E=1 or Vitest only).
- * Precedence: interview marker → soul marker → "remember" → echo.
+ * Precedence: interview marker → soul marker → "remind me … to …" → "remember" → echo.
  */
 
 const SOUL = `# Test bot
@@ -72,6 +72,22 @@ function reply(options: LanguageModelV4CallOptions): LanguageModelV4StreamPart[]
     return textParts(`Question ${answered + 1}: what should I know?`);
   }
   if (system.includes("[[soul]]")) return textParts(SOUL);
+
+  const remind = /remind me (.+?) to (.+)/i.exec(last);
+  if (remind) {
+    const prev = prompt.at(-1);
+    if (prev?.role === "tool") {
+      const result = prev.content.find((p) => p.type === "tool-result");
+      const v = (result && result.output.type === "json" ? result.output.value : {}) as { ok?: boolean; when?: string; error?: string };
+      return textParts(v.ok ? `Done — I'll remind you ${v.when}.` : (v.error ?? "I couldn't set that reminder."));
+    }
+    if (!options.tools?.some((t) => t.name === "set_reminder")) return textParts("I can't set reminders here.");
+    return [
+      { type: "stream-start", warnings: [] },
+      { type: "tool-call", toolCallId: `call-${users.length}`, toolName: "set_reminder", input: JSON.stringify({ text: remind[2].trim(), when: remind[1].trim() }) },
+      { type: "finish", usage, finishReason: { unified: "tool-calls", raw: undefined } },
+    ];
+  }
 
   const remember = /remember(?: that)?\s+(.+)/i.exec(last);
   if (remember) {

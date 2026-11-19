@@ -46,3 +46,23 @@ test("calls the remember tool when asked to remember and tools are offered", asy
   expect(await r.text).toContain("Got it.");
   expect(saved).toEqual(["I like tea"]);
 });
+
+test("calls set_reminder for \"remind me … to …\" and relays the result", async () => {
+  const asked: unknown[] = [];
+  const reminderTools = (out: Record<string, unknown>) => ({
+    set_reminder: tool({
+      description: "set",
+      inputSchema: z.object({ text: z.string(), when: z.string() }),
+      execute: async (input) => {
+        asked.push(input);
+        return out;
+      },
+    }),
+  });
+  const ok = streamText({ model: mockModel(), prompt: "remind me in 3 seconds to stretch", tools: reminderTools({ ok: true, when: "Today, 10:00 AM" }), stopWhen: isStepCount(3) });
+  expect(await ok.text).toBe("Done — I'll remind you Today, 10:00 AM.");
+  expect(asked).toEqual([{ text: "stretch", when: "in 3 seconds" }]);
+
+  const refused = streamText({ model: mockModel(), prompt: "remind me yesterday to stretch", tools: reminderTools({ ok: false, error: "That time has already passed." }), stopWhen: isStepCount(3) });
+  expect(await refused.text).toBe("That time has already passed.");
+});
