@@ -6,6 +6,8 @@ import { addMemory } from "../memory/repo";
 import { cancelReminder, createReminder, getReminder, listReminders, updateReminder } from "../reminders/repo";
 import { TIME_HELP } from "../reminders/resolve";
 import { REPEATS, formatWhen, parseRepeat, parseWhen, repeatLabel } from "../reminders/when";
+import { createRoutine, deleteRoutine, getRoutineRow, listRoutines, setPaused, updateRoutine } from "../routines/repo";
+import { resolveSchedule } from "../routines/schedule";
 import { patchMessageMeta } from "./history";
 
 export const REACTIONS = ["❤️", "👍", "😂", "🔥", "👀", "😮"] as const;
@@ -13,7 +15,7 @@ export const REACTIONS = ["❤️", "👍", "😂", "🔥", "👀", "😮"] as c
 const ASK = " Ask the user, then try again.";
 const NOT_FOUND = { ok: false as const, error: "No reminder with that id. Use list_reminders to find it." };
 
-/** Every bot's tools: remembering, reacting and reminders. `zone` is the user's time zone. */
+/** Every bot's tools: remembering, reacting, reminders and routines. `zone` is the user's time zone. */
 export function makeTools(p: { botId: string; lastUserMessageId?: string; zone: string }): ToolSet {
   const { zone } = p;
   const at = (when: string) => {
@@ -34,6 +36,13 @@ export function makeTools(p: { botId: string; lastUserMessageId?: string; zone: 
   const failed = (e: unknown) => {
     if (e instanceof HttpStatus) return { ok: false as const, error: e.message };
     throw e;
+  };
+
+  const NO_ROUTINE = { ok: false as const, error: "No routine with that id. Use list_routines to find it." };
+  const nextLabel = (iso: string | null) => (iso ? formatWhen(new Date(iso), { now: new Date(), zone }) : null);
+  const myRoutine = async (id: string) => {
+    const r = await getRoutineRow(id);
+    return r && r.botId === p.botId ? r : null;
   };
 
   return {
@@ -106,6 +115,77 @@ export function makeTools(p: { botId: string; lastUserMessageId?: string; zone: 
         } catch (e) {
           return failed(e);
         }
+      },
+    }),
+    create_routine: tool({
+      description:
+        'Set up a routine: a job you will do on your own on a schedule, e.g. "every weekday at 8am give me a briefing". At each time you run the instruction and post the result in this chat. For a one-off nudge use set_reminder instead.',
+      inputSchema: z.object({
+        name: z.string().min(1).max(60).describe('A short title: "Morning briefing".'),
+        instruction: z.string().min(1).max(2000).describe("What to do each time, in the user's words, complete enough to follow on your own later."),
+        when: z.string().min(1).max(200).describe('When, in the user\'s own words: "every weekday at 8am", "every Sunday 6pm", "tomorrow at 7".'),
+      }),
+      execute: async ({ name, instruction, when }) => {
+        const s = await resolveSchedule(when);
+        if (!s.ok) return { ok: false as const, error: s.message + ASK };
+        try {
+          const routine = await createRoutine({ botId: p.botId, name, instruction, at: s.at, repeat: s.repeat });
+          return { ok: true as const, routine, next: nextLabel(routine.nextRunAt) };
+        } catch (e) {
+          return failed(e);
+        }
+      },
+    }),
+    list_routines: tool({
+      description: "List this bot's routines with their ids, schedules and next run.",
+      inputSchema: z.object({}),
+      execute: async () => ({
+        routines: (await listRoutines(p.botId)).map((r) => ({
+          id: r.id,
+          name: r.name,
+          instruction: r.instruction,
+          schedule: r.scheduleLabel,
+          next: nextLabel(r.nextRunAt),
+          paused: r.status === "paused",
+        })),
+      }),
+    }),
+    update_routine: tool({
+      description: "Change a routine's name, instruction or time, or pause/resume it. Get its id from list_routines.",
+      inputSchema: z.object({
+        id: z.string(),
+        name: z.string().min(1).max(60).optional(),
+        instruction: z.string().min(1).max(2000).optional(),
+        when: z.string().min(1).max(200).optional().describe("The new time in the user's words."),
+        paused: z.boolean().optional(),
+      }),
+      execute: async ({ id, name, instruction, when, paused }) => {
+        const current = await myRoutine(id);
+        if (!current) return NO_ROUTINE;
+        let at: Date | undefined;
+        let repeat = undefined as (typeof current)["repeat"] | undefined;
+        if (when) {
+          const s = await resolveSchedule(when, current.repeat);
+          if (!s.ok) return { ok: false as const, error: s.message + ASK };
+          at = s.at;
+          repeat = s.repeat;
+        }
+        try {
+          let routine = await updateRoutine(id, { name, instruction, at, repeat });
+          if (paused !== undefined) routine = await setPaused(id, paused);
+          return routine ? { ok: true as const, routine, next: nextLabel(routine.nextRunAt) } : NO_ROUTINE;
+        } catch (e) {
+          return failed(e);
+        }
+      },
+    }),
+    delete_routine: tool({
+      description: "Delete a routine for good. Get its id from list_routines.",
+      inputSchema: z.object({ id: z.string() }),
+      execute: async ({ id }) => {
+        if (!(await myRoutine(id))) return NO_ROUTINE;
+        await deleteRoutine(id);
+        return { ok: true as const };
       },
     }),
     cancel_reminder: tool({

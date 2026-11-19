@@ -103,11 +103,11 @@ function failureOf(e: unknown): { error: string; action?: { label: string; href:
 }
 
 /**
- * Runs a routine now: records the run, does the work, posts the result (or why it
- * couldn't run) into the bot's chat and finishes the run. Throws only if the routine is
- * missing (404) or already running (409).
+ * Starts a routine now: records the run and returns its id at once; `done` resolves when
+ * the work is finished and the result (or why it couldn't run) is in the bot's chat.
+ * Throws only if the routine is missing (404) or already running (409); `done` never rejects.
  */
-export async function runRoutine(routineId: string, trigger: "schedule" | "manual", opts: { late?: boolean } = {}): Promise<RunView> {
+export async function startRun(routineId: string, trigger: "schedule" | "manual", opts: { late?: boolean } = {}): Promise<{ runId: string; done: Promise<RunView> }> {
   const r = await getRoutineRow(routineId);
   if (!r) throw notFound("Routine");
   const db = await getDb();
@@ -125,7 +125,37 @@ export async function runRoutine(routineId: string, trigger: "schedule" | "manua
   await db.update(routines).set({ lastRunAt: startedAt }).where(eq(routines.id, r.id));
   publish({ type: "routines", botId: r.botId });
   publish({ type: "run", botId: r.botId, routineId: r.id, runId, name: r.name, status: "running" });
+  return { runId, done: finish(r, runId, startedAt, trigger, !!opts.late) };
+}
 
+/** Runs a routine and waits for it to finish (see startRun). */
+export async function runRoutine(routineId: string, trigger: "schedule" | "manual", opts: { late?: boolean } = {}): Promise<RunView> {
+  return (await startRun(routineId, trigger, opts)).done;
+}
+
+async function finish(r: RoutineRow, runId: string, startedAt: Date, trigger: "schedule" | "manual", late: boolean): Promise<RunView> {
+  const fallback = (status: "done" | "failed", error: string | null): RunView => ({
+    id: runId,
+    routineId: r.id,
+    trigger,
+    status,
+    startedAt: startedAt.toISOString(),
+    finishedAt: new Date().toISOString(),
+    messageId: null,
+    error,
+    late,
+  });
+  try {
+    return await finishRun(r, runId, late, fallback);
+  } catch (e) {
+    console.error(`[grid] routine ${r.id} run ${runId}:`, e);
+    return fallback("failed", "Something went wrong saving this run.");
+  }
+}
+
+async function finishRun(r: RoutineRow, runId: string, lateRun: boolean, fallback: (s: "done" | "failed", e: string | null) => RunView): Promise<RunView> {
+  const db = await getDb();
+  const opts = { late: lateRun };
   const messageId = `msg_${hex(8)}`;
   let status: "done" | "failed" = "done";
   let failed: { error: string; action?: { label: string; href: string } } | undefined;
@@ -146,10 +176,9 @@ export async function runRoutine(routineId: string, trigger: "schedule" | "manua
   } catch {
     // The bot was deleted while this ran; its routines and runs went with it.
   }
-  const finishedAt = new Date();
   const [row] = await db
     .update(routineRuns)
-    .set({ status, finishedAt, messageId: saved ? messageId : null, error: failed?.error ?? null })
+    .set({ status, finishedAt: new Date(), messageId: saved ? messageId : null, error: failed?.error ?? null })
     .where(eq(routineRuns.id, runId))
     .returning();
 
@@ -159,9 +188,7 @@ export async function runRoutine(routineId: string, trigger: "schedule" | "manua
   }
   publish({ type: "run", botId: r.botId, routineId: r.id, runId, name: r.name, status });
   publish({ type: "routines", botId: r.botId });
-  return row
-    ? toRunView(row)
-    : { id: runId, routineId: r.id, trigger, status, startedAt: startedAt.toISOString(), finishedAt: finishedAt.toISOString(), messageId: null, error: failed?.error ?? null, late: !!opts.late };
+  return row ? toRunView(row) : fallback(status, failed?.error ?? null);
 }
 
 /** Claims due routines and starts each one without waiting for it to finish. */

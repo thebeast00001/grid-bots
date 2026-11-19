@@ -72,3 +72,28 @@ test("a bot can't touch another bot's reminders", async () => {
   expect(await run(makeTools({ botId: b.id, lastUserMessageId: "m", zone }), "cancel_reminder", { id: set.reminder.id })).toMatchObject({ ok: false });
   expect((await listReminders({ botId: a.id, upcoming: true })).map((r) => r.id)).toEqual([set.reminder.id]);
 });
+
+test("create, list, pause and delete routines; another bot's are off limits", async () => {
+  const bot = await createBot({ name: "Routiner", job: "", avatar });
+  const tools = makeTools({ botId: bot.id, lastUserMessageId: "m", zone });
+  const made = (await run(tools, "create_routine", { name: "Morning briefing", instruction: "Give me a briefing", when: "every weekday at 8am" })) as {
+    ok: boolean;
+    routine: { id: string };
+  };
+  expect(made).toMatchObject({ ok: true, routine: { name: "Morning briefing", scheduleLabel: "Weekdays at 8:00 AM" } });
+  expect((made as unknown as { next: string }).next).toMatch(/(Today|Tomorrow|\w{3} \d+ \w{3}), 8:00 AM/);
+  const id = made.routine.id;
+
+  expect(await run(tools, "list_routines", {})).toMatchObject({ routines: [{ id, name: "Morning briefing", schedule: "Weekdays at 8:00 AM", paused: false }] });
+  expect(await run(tools, "update_routine", { id, paused: true })).toMatchObject({ ok: true, routine: { status: "paused" } });
+  expect(await run(tools, "create_routine", { name: "x", instruction: "y", when: "whenever" })).toMatchObject({ ok: false });
+
+  const other = await createBot({ name: "Other", job: "", avatar });
+  expect(await run(makeTools({ botId: other.id, zone }), "delete_routine", { id })).toMatchObject({ ok: false });
+  expect(await run(tools, "delete_routine", { id })).toMatchObject({ ok: true });
+});
+
+test("without a user message (a routine run) there is no react tool", () => {
+  expect(Object.keys(makeTools({ botId: "b", zone }))).not.toContain("react");
+  expect(Object.keys(makeTools({ botId: "b", lastUserMessageId: "m", zone }))).toContain("react");
+});

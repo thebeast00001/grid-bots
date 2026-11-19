@@ -84,3 +84,8 @@ test("with tools on, the bot is told to use set_reminder for anything time-based
   const off = buildInstructions({ bot, botMemories: [], userMemories: [], now: new Date(), zone: "UTC", interview: { pending: false, answered: 0 }, tools: false });
   expect(off).not.toContain("set_reminder");
 });
+
+test("with tools on, the bot is told to use create_routine for standing jobs", () => {
+  const text = buildInstructions({ bot, botMemories: [], userMemories: [], now: new Date(), zone: "UTC", interview: { pending: false, answered: 0 }, tools: true });
+  expect(text).toContain("create_routine");
+});

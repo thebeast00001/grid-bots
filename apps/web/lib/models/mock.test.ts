@@ -66,3 +66,24 @@ test("calls set_reminder for \"remind me … to …\" and relays the result", as
   const refused = streamText({ model: mockModel(), prompt: "remind me yesterday to stretch", tools: reminderTools({ ok: false, error: "That time has already passed." }), stopWhen: isStepCount(3) });
   expect(await refused.text).toBe("That time has already passed.");
 });
+
+test("calls create_routine for \"every … <job>\" and relays the schedule", async () => {
+  const asked: unknown[] = [];
+  const r = streamText({
+    model: mockModel(),
+    prompt: "every weekday at 8am give me a briefing",
+    tools: {
+      create_routine: tool({
+        description: "create",
+        inputSchema: z.object({ name: z.string(), instruction: z.string(), when: z.string() }),
+        execute: async (input) => {
+          asked.push(input);
+          return { ok: true, routine: { scheduleLabel: "Weekdays at 8:00 AM" }, next: "Tomorrow, 8:00 AM" };
+        },
+      }),
+    },
+    stopWhen: isStepCount(3),
+  });
+  expect(await r.text).toBe("Done — Weekdays at 8:00 AM, first one Tomorrow, 8:00 AM.");
+  expect(asked).toEqual([{ name: "Give me a briefing", instruction: "give me a briefing", when: "every weekday at 8am" }]);
+});

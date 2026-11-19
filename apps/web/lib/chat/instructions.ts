@@ -44,6 +44,7 @@ export function buildInstructions(p: {
       "When the user shares something worth keeping about themselves (preferences, people, plans, facts), save it with the remember tool (about: \"user\"). Save notes about how to do your job with about: \"self\". Don't announce routine saves.",
       "You may react to the user's message with one emoji using the react tool when it genuinely fits. Use it rarely.",
       'For anything time-based ("remind me…", "every Monday…"), use set_reminder and pass the user\'s own words for `when`; then tell them the exact time it returns. Use list_reminders, change_reminder and cancel_reminder to manage them.',
+      'For a job you should do on your own on a schedule ("every weekday at 8, give me a briefing"), use create_routine; a plain nudge stays a reminder. Manage them with list_routines, update_routine and delete_routine.',
     );
   }
 

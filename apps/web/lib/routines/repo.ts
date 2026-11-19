@@ -121,7 +121,10 @@ export async function updateRoutine(id: string, p: { name?: string; instruction?
   if (p.repeat !== undefined) set.repeat = p.repeat;
   if (p.at) Object.assign(set, { anchorAt: p.at, nextRunAt: p.at });
   const current = await getRoutineRow(id);
-  if (current?.status === "done" && p.at) set.status = "active";
+  if (!current) return null;
+  if (current.status === "done" && p.at) set.status = "active";
+  // Nothing to change (e.g. only pausing): leave it as it is.
+  if (Object.keys(set).length === 0) return toView(current);
   return change(id, set);
 }
 

@@ -94,6 +94,24 @@ function reply(options: LanguageModelV4CallOptions): LanguageModelV4StreamPart[]
     ];
   }
 
+  const routine = /^(every\b.*?\b\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*,?\s+(.+)$/i.exec(last);
+  if (routine) {
+    const prev = prompt.at(-1);
+    if (prev?.role === "tool") {
+      const result = prev.content.find((p) => p.type === "tool-result");
+      const v = (result && result.output.type === "json" ? result.output.value : {}) as { ok?: boolean; next?: string; error?: string; routine?: { scheduleLabel?: string } };
+      return textParts(v.ok ? `Done — ${v.routine?.scheduleLabel}, first one ${v.next}.` : (v.error ?? "I couldn't set that up."));
+    }
+    if (!options.tools?.some((t) => t.name === "create_routine")) return textParts("I can't set up routines here.");
+    const job = routine[2].trim();
+    const name = (job[0].toUpperCase() + job.slice(1)).slice(0, 60);
+    return [
+      { type: "stream-start", warnings: [] },
+      { type: "tool-call", toolCallId: `call-${users.length}`, toolName: "create_routine", input: JSON.stringify({ name, instruction: job, when: routine[1].trim() }) },
+      { type: "finish", usage, finishReason: { unified: "tool-calls", raw: undefined } },
+    ];
+  }
+
   const remember = /remember(?: that)?\s+(.+)/i.exec(last);
   if (remember) {
     if (prompt.at(-1)?.role === "tool") return textParts("Got it.");
