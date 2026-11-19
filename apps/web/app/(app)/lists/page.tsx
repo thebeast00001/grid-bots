@@ -87,7 +87,7 @@ export default function ListsPage() {
         </AnimatePresence>
 
         {lists === null ? (
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {[0, 1].map((i) => (
               <div key={i} className="h-[84px] rounded-2xl bg-[var(--surface)] edge" />
             ))}
@@ -100,13 +100,13 @@ export default function ListsPage() {
             </p>
           </div>
         ) : (
-          <ul className="grid gap-2 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {lists.map((l) => {
               const all = l.open + l.done;
               const share = l.kind === "expenses" || !all ? 0 : l.done / all;
               return (
                 <li key={l.id}>
-                  <Link href={`/lists/${l.id}`} data-testid="list-tile" className="press block rounded-2xl bg-[var(--surface)] p-3.5 edge hover:bg-[var(--surface-2)]">
+                  <Link href={`/lists/${l.id}`} data-testid="list-tile" className="press block h-full rounded-2xl bg-[var(--surface)] p-3.5 edge hover:bg-[var(--surface-2)]">
                     <div className="flex items-center gap-2 text-[var(--text-2)]">
                       <KindIcon kind={l.kind} size={14} />
                       <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-[var(--text)]">{l.name}</span>

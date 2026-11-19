@@ -136,7 +136,8 @@ export function makeListTools(p: { botId: string; zone: string }): ToolSet {
     }),
 
     log_expense: tool({
-      description: "Log money spent (\"I spent 250 on lunch\"). Goes to the given expenses list, else the newest one, else a new list called Expenses.",
+      description:
+        "Log money spent (\"I spent 250 on lunch\"). Goes to the given expenses list; else the only one, or the one called Expenses; else a new list called Expenses. With several and none called Expenses, it says so: ask the user which.",
       inputSchema: z.object({
         text: z.string().min(1).max(200),
         amount: z.number().min(0).describe("Whole units, e.g. 250.5"),
@@ -150,7 +151,13 @@ export function makeListTools(p: { botId: string; zone: string }): ToolSet {
           if (target) {
             if ((await getList(target)).kind !== "expenses") return { ok: false as const, error: "That isn't an expenses list." };
           } else {
-            target = (await listLists({ zone: p.zone })).find((l) => l.kind === "expenses")?.id;
+            const ledgers = (await listLists({ zone: p.zone })).filter((l) => l.kind === "expenses");
+            const named = ledgers.find((l) => l.name.trim().toLowerCase() === "expenses");
+            if (ledgers.length > 1 && !named) {
+              const names = ledgers.slice(0, 6).map((l) => l.name);
+              return { ok: false as const, error: `You have several expense lists: ${names.join(", ")}${ledgers.length > 6 ? "…" : ""}. Say which one (pass listId).` };
+            }
+            target = (named ?? ledgers[0])?.id;
           }
           if (!target) target = (await createList({ name: "Expenses", kind: "expenses", currency, botId: p.botId }, { zone: p.zone })).id;
           const [item] = await addItems(target, [{ text, amount: hundredths(amount), spentOn }], { zone: p.zone });

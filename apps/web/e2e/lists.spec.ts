@@ -108,3 +108,53 @@ test("a card whose list was deleted says so", async ({ page }) => {
   await page.request.delete(`/api/lists/${lists[0].id}`, { headers: H });
   await expect(page.getByTestId("list-card")).toHaveText(/This list was deleted/);
 });
+
+test.describe("phone", () => {
+  test.use({ viewport: { width: 375, height: 812 }, hasTouch: true });
+
+  test("a huge amount doesn't run into the remove button", async ({ page }) => {
+    const res = await page.request.post("/api/lists", { headers: H, data: { name: "Big spend", kind: "expenses", currency: "INR", items: [{ text: "New laptop", amount: 9_999_999_900 }] } });
+    await page.goto(`/lists/${((await res.json()) as { id: string }).id}`);
+    // The text must fit its box (a fixed-width box can let it spill out past its edge).
+    expect(await page.getByTestId("amount").first().evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+    const amount = (await page.getByTestId("amount").first().boundingBox())!;
+    const remove = (await page.getByRole("button", { name: "Remove New laptop" }).boundingBox())!;
+    expect(amount.x + amount.width).toBeLessThanOrEqual(remove.x);
+  });
+
+  test("habit days are labelled on a phone too", async ({ page }) => {
+    const res = await page.request.post("/api/lists", { headers: H, data: { name: "Habits", kind: "habits", items: [{ text: "Run" }] } });
+    await page.goto(`/lists/${((await res.json()) as { id: string }).id}`);
+    await expect(page.getByTestId("habit-days")).toBeVisible();
+  });
+
+  test("a card that grows once its list loads keeps the chat scrolled to the bottom", async ({ page }) => {
+    const send = await chat(page, "Scroller");
+    for (const [t, reply] of [
+      ["make me a packing list for goa: sunscreen, swimsuit and charger", "Done — your"],
+      ["track my habits: stretch, journal", "Tracking 2 habits."],
+      ["I spent 250 on lunch", "Logged Lunch"],
+    ]) {
+      await send(t);
+      await expect(page.getByTestId("bot-message").filter({ hasText: reply })).toBeVisible({ timeout: 20_000 });
+    }
+    // Opening the chat again: it scrolls to the bottom first, then the cards load (slowly) and grow.
+    await page.route("**/api/lists/lst_*", async (route) => {
+      await new Promise((r) => setTimeout(r, 800));
+      await route.continue();
+    });
+    await page.reload();
+    await expect(page.getByTestId("list-card").last().getByTestId("month-total")).toBeVisible({ timeout: 20_000 });
+    await page.waitForTimeout(500);
+    expect(await page.getByTestId("chat-scroller").evaluate((el) => Math.round(el.scrollHeight - el.scrollTop - el.clientHeight))).toBeLessThanOrEqual(2);
+  });
+
+  test("a long list name doesn't push the Lists page wider than the screen", async ({ page }) => {
+    await page.request.post("/api/lists", { headers: H, data: { name: "Goa trip — packing for the long weekend with the whole family and the dog", kind: "checklist" } });
+    await page.goto("/lists");
+    const tile = page.getByTestId("list-tile").first();
+    await expect(tile).toBeVisible();
+    const box = (await tile.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(375);
+  });
+});

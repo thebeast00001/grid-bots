@@ -58,6 +58,19 @@ test("log_expense: to the newest expenses list, or a new one; amounts in whole u
   expect(read.items).toContainEqual(expect.objectContaining({ text: "Tea", amount: 20 }));
 });
 
+test("with several expense lists: the one called Expenses, else ask which", async () => {
+  const trip = await run(tools, "create_list", { name: "Goa trip money", kind: "expenses" }); // newer than Expenses
+  const taxi = await run(tools, "log_expense", { text: "Taxi", amount: 300 });
+  expect(taxi.list!.name).toBe("Expenses");
+  await run(tools, "change_list", { id: taxi.list!.id, rename: "Home spending" });
+  const unsure = await run(tools, "log_expense", { text: "Taxi", amount: 300 });
+  expect(unsure.ok).toBe(false);
+  expect(unsure.error).toMatch(/several expense lists/);
+  expect(unsure.error).toContain("Goa trip money");
+  expect(unsure.error).toContain("Home spending");
+  expect((await run(tools, "log_expense", { text: "Taxi", amount: 300, listId: trip.list!.id })).list!.name).toBe("Goa trip money");
+});
+
 test("unknown ids and too many items are plain errors, and nothing changes", async () => {
   const l = (await run(tools, "create_list", { name: "Strict", items: ["a"] })).list!;
   expect(await run(tools, "read_list", { id: "lst_nope" })).toEqual({ ok: false, error: "No list with that id. Use find_lists to see them." });

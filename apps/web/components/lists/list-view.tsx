@@ -361,7 +361,8 @@ function HabitsBody({ list }: { list: ListView }) {
       <AddRow placeholder="Add a habit" onAdd={(text) => addItem(list.id, { text })} />
       {list.items.length === 0 && <p className="px-2 py-3 text-[14px] text-[var(--text-3)]">No habits yet.</p>}
       {list.items.length > 0 && (
-        <div aria-hidden className="mb-1 hidden justify-end gap-1 pr-9 text-center text-[11px] text-[var(--text-3)] sm:flex">
+        // Day names over the boxes: on the right on wide screens, under the name on phones.
+        <div data-testid="habit-days" aria-hidden className="mb-1 flex gap-1 pl-9 text-center text-[11px] text-[var(--text-3)] sm:justify-end sm:pl-0 sm:pr-9">
           {days.map((d) => (
             <span key={d} className={`w-8 ${d === now ? "font-semibold text-[var(--text)]" : ""}`}>
               {DateTime.fromISO(d).toFormat("ccccc")}
@@ -464,7 +465,7 @@ function ExpensesBody({ list }: { list: ListView }) {
           <li key={i.id} className="group flex items-center gap-2 border-b border-[var(--edge)] py-1.5 pl-2 pr-1 last:border-b-0">
             <ItemText list={list} item={i} />
             <span className="tnum shrink-0 text-[12.5px] text-[var(--text-3)]">{i.spentOn ? DateTime.fromISO(i.spentOn).toFormat("d LLL") : ""}</span>
-            <span className="tnum w-24 shrink-0 text-right text-[15px] font-medium">{formatAmount(i.amount ?? 0, list.currency, locale)}</span>
+            <span data-testid="amount" className="tnum min-w-20 shrink-0 text-right text-[15px] font-medium">{formatAmount(i.amount ?? 0, list.currency, locale)}</span>
             <RemoveButton list={list} item={i} />
           </li>
         ))}

@@ -200,6 +200,18 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
     else if (visible.length > lastLen.current) setUnseen((n) => n + visible.length - lastLen.current);
     lastLen.current = visible.length;
   }, [visible, soulNote]);
+  // Content can grow after it's drawn (a list card loading, an image): keep the bottom in view.
+  const content = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scroller.current;
+    const inner = content.current;
+    if (!el || !inner || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      if (stuck.current) el.scrollTop = el.scrollHeight;
+    });
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, []);
   const onScroll = () => {
     const el = scroller.current;
     if (!el) return;
@@ -291,8 +303,8 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
             </div>
           )}
 
-          <div ref={scroller} onScroll={onScroll} className="fade-top thin-scroll absolute inset-0 overflow-y-auto px-3 pb-4 md:px-6" style={{ paddingTop: mobile ? 156 : 178 }}>
-            <div className="mx-auto flex max-w-[680px] flex-col">
+          <div ref={scroller} data-testid="chat-scroller" onScroll={onScroll} className="fade-top thin-scroll absolute inset-0 overflow-y-auto px-3 pb-4 md:px-6" style={{ paddingTop: mobile ? 156 : 178 }}>
+            <div ref={content} className="mx-auto flex max-w-[680px] flex-col">
               {visible.length === 0 && !interviewing && <div className="py-10 text-center text-[13px] text-[var(--text-3)]">Say hi to {bot.name}.</div>}
               {soulNote?.after === null && soulCard()}
               {visible.map((m, i) => {
