@@ -45,6 +45,21 @@ test("send, stream, react, edit, regenerate", async ({ page }) => {
   await expect(page.getByTestId("bot-message")).toHaveCount(1);
 });
 
+test("a message sent while the bot is still replying goes out right after", async ({ page }) => {
+  await connectMock(page);
+  const id = await makeBot(page, "Quick", { skipInterview: true });
+  await page.goto(`/bots/${id}`);
+  const box = page.getByPlaceholder("Message Quick");
+  await box.fill(`first ${"word ".repeat(60)}`);
+  await box.press("Enter");
+  await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
+  await box.fill("second");
+  await box.press("Enter");
+  const replies = page.getByTestId("bot-message");
+  await expect(replies.filter({ hasText: "You said: second" })).toBeVisible();
+  await expect(replies).toHaveCount(2);
+});
+
 test("attach an image", async ({ page }) => {
   await connectMock(page);
   const id = await makeBot(page, "Eyes", { skipInterview: true });

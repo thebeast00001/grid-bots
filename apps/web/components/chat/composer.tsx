@@ -64,12 +64,13 @@ export function Composer(p: Props) {
 
   const ready = files.every((f) => !f.uploading);
   const has = text.trim().length > 0 || files.length > 0;
-  // Enter while a file is still uploading: send as soon as it finishes.
+  // Enter while a file is still uploading, or while the bot is still replying:
+  // keep the message and send it the moment that finishes.
   const [queued, setQueued] = useState(false);
 
   const submit = () => {
-    if (!has || p.busy) return;
-    if (!ready) {
+    if (!has) return;
+    if (!ready || p.busy) {
       setQueued(true);
       return;
     }
@@ -85,8 +86,8 @@ export function Composer(p: Props) {
   const submitRef = useRef(submit);
   submitRef.current = submit;
   useEffect(() => {
-    if (queued && ready) submitRef.current();
-  }, [queued, ready]);
+    if (queued && ready && !p.busy) submitRef.current();
+  }, [queued, ready, p.busy]);
 
   return (
     <div className="shrink-0 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-1 md:px-6 md:pb-4">
@@ -109,6 +110,7 @@ export function Composer(p: Props) {
           )}
         </AnimatePresence>
 
+        {queued && p.busy && <p className="mb-2 px-2 text-[12.5px] text-[var(--text-3)]">Sends when {p.botName} finishes…</p>}
         {error && (
           <p role="alert" className="mb-2 text-[13px]" style={{ color: "oklch(0.6 0.2 25)" }}>
             {error}
