@@ -4,7 +4,7 @@ import { MockLanguageModelV4 } from "ai/test";
 
 /**
  * A deterministic model for automated tests (GRID_E2E=1 or Vitest only).
- * Precedence: interview marker → soul marker → "remind me … to …" → "remember" → echo.
+ * Precedence: interview marker → soul marker → routine run → "remind me … to …" → "remember" → echo.
  */
 
 const SOUL = `# Test bot
@@ -72,6 +72,11 @@ function reply(options: LanguageModelV4CallOptions): LanguageModelV4StreamPart[]
     return textParts(`Question ${answered + 1}: what should I know?`);
   }
   if (system.includes("[[soul]]")) return textParts(SOUL);
+
+  if (last.startsWith("[[routine]]")) {
+    const job = /Do this: (.+)/.exec(last)?.[1]?.trim() ?? "";
+    return textParts(`Routine result: ${job}`);
+  }
 
   const remind = /remind me (.+?) to (.+)/i.exec(last);
   if (remind) {

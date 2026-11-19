@@ -14,7 +14,7 @@ const ASK = " Ask the user, then try again.";
 const NOT_FOUND = { ok: false as const, error: "No reminder with that id. Use list_reminders to find it." };
 
 /** Every bot's tools: remembering, reacting and reminders. `zone` is the user's time zone. */
-export function makeTools(p: { botId: string; lastUserMessageId: string; zone: string }): ToolSet {
+export function makeTools(p: { botId: string; lastUserMessageId?: string; zone: string }): ToolSet {
   const { zone } = p;
   const at = (when: string) => {
     const r = parseWhen(when, { now: new Date(), zone });
@@ -45,14 +45,19 @@ export function makeTools(p: { botId: string; lastUserMessageId: string; zone: s
         return { saved: true, id: m.id };
       },
     }),
-    react: tool({
-      description: "React to the user's latest message with one emoji.",
-      inputSchema: z.object({ emoji: z.enum(REACTIONS) }),
-      execute: async ({ emoji }) => {
-        await patchMessageMeta(p.lastUserMessageId, { botReaction: emoji });
-        return { reacted: emoji };
-      },
-    }),
+    // Only in a conversation: a routine running on its own has no message to react to.
+    ...(p.lastUserMessageId
+      ? {
+          react: tool({
+            description: "React to the user's latest message with one emoji.",
+            inputSchema: z.object({ emoji: z.enum(REACTIONS) }),
+            execute: async ({ emoji }) => {
+              await patchMessageMeta(p.lastUserMessageId!, { botReaction: emoji });
+              return { reacted: emoji };
+            },
+          }),
+        }
+      : {}),
     set_reminder: tool({
       description:
         'Set a reminder. Use it for anything time-based the user asks for ("remind me…", "every Monday…"). The reminder arrives in this chat at that time. Tell the user the exact time it returns.',

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "routine_runs_one_running" ON "routine_runs" USING btree ("routine_id") WHERE "routine_runs"."status" = 'running';

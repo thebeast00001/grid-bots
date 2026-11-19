@@ -1,4 +1,5 @@
-import { bigserial, boolean, index, integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { bigserial, boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type { CritterConfig } from "../critter/types";
 import type { ModelRef } from "../models/types";
 import type { Repeat } from "../reminders/when";
@@ -129,7 +130,11 @@ export const routineRuns = pgTable(
     error: text("error"),
     late: boolean("late").notNull().default(false),
   },
-  (t) => [index("routine_runs_routine_idx").on(t.routineId, t.startedAt)],
+  (t) => [
+    index("routine_runs_routine_idx").on(t.routineId, t.startedAt),
+    // One run per routine at a time: a second start fails here instead of racing.
+    uniqueIndex("routine_runs_one_running").on(t.routineId).where(sql`${t.status} = 'running'`),
+  ],
 );
 
 export type Memory = typeof memories.$inferSelect;
