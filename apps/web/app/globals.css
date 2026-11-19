@@ -125,17 +125,6 @@ body { overflow: hidden; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .thin-scroll { scrollbar-width: thin; scrollbar-color: var(--edge-strong) transparent; }
 
-/* Thread fades under the floating bot */
-.fade-top {
-  --fade-from: 118px;
-  --fade-to: 178px;
-  -webkit-mask-image: linear-gradient(to bottom, transparent var(--fade-from), #000 var(--fade-to));
-  mask-image: linear-gradient(to bottom, transparent var(--fade-from), #000 var(--fade-to));
-}
-@media (max-width: 767px) {
-  .fade-top { --fade-from: 104px; --fade-to: 158px; }
-}
-
 /* Streaming words: fade + un-blur, no typewriter */
 .tok { animation: tok-in 160ms var(--ease-out) both; }
 @keyframes tok-in { from { opacity: 0; filter: blur(2px); } to { opacity: 1; filter: blur(0); } }

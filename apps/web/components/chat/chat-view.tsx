@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowDown, ArrowLeft, PanelRight, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowDown, RotateCcw, Sparkles } from "lucide-react";
 import { Sheet } from "@/components/shell/sheet";
 import { toast } from "sonner";
 import { MemoryList } from "@/components/profile/memory-list";
@@ -20,7 +20,9 @@ import { ease, spring } from "@/lib/motion";
 import { Composer } from "./composer";
 import { deriveStatus, parseChatError } from "./derive-status";
 import { MessageRow } from "./message-row";
-import { Presence } from "./presence";
+import { Critter } from "@/components/critter/critter";
+import { SidePane } from "@/components/computer/side-pane";
+import { ChatHeader, type Pane } from "./chat-header";
 
 /** Hidden opener that starts a new bot's interview (see app/api/chat). */
 const START = "[[start]]";
@@ -100,7 +102,28 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
   const answered = visible.filter((m) => m.role === "user").length;
   const [writing, setWriting] = useState(false);
   const [soulNote, setSoulNote] = useState<SoulNote>(null);
-  const [panelOpen, setPanelOpen] = useState(false);
+  // The right pane: the bot's computer or its profile. Wide screens open the computer by
+  // themselves unless it was closed there before.
+  const [pane, setPaneState] = useState<Pane>(null);
+  useEffect(() => {
+    if (mobile) return;
+    let pref: string | null = null;
+    try {
+      pref = localStorage.getItem("grid-pane");
+    } catch {
+      // Private mode: no remembered choice.
+    }
+    if (pref !== "closed" && window.innerWidth >= 1280) setPaneState("computer");
+  }, [mobile]);
+  const setPane = (next: Pane) => {
+    setPaneState(next);
+    if (mobile) return;
+    try {
+      localStorage.setItem("grid-pane", next === null ? "closed" : "open");
+    } catch {
+      // Private mode: fine, it just isn't remembered.
+    }
+  };
   // Bumped when memories may have changed, so an open memory list reloads.
   const [memoryVersion, setMemoryVersion] = useState(0);
 
@@ -182,7 +205,7 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
         <Sparkles size={16} style={{ color: "var(--bot-strong)" }} />
         <span>{soulNote.kind === "wrote" ? `${bot.name} wrote their soul` : `${bot.name} wrote a starter soul`}</span>
         <button
-          onClick={() => setPanelOpen(true)}
+          onClick={() => setPane("profile")}
           className="press rounded-full px-3 py-1.5 text-[13px] font-semibold"
           style={{ background: "var(--bot)", color: "var(--bot-ink)" }}
         >
@@ -270,42 +293,25 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
   return (
     <div className="flex h-full min-h-0 w-full">
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+        <ChatHeader
+          bot={bot}
+          status={derived}
+          subtitle={subtitle}
+          mobile={mobile}
+          pane={pane}
+          onPane={setPane}
+          onSkipInterview={interviewing && !writing ? () => finishInterview(true) : undefined}
+        />
         <div className="relative min-h-0 flex-1">
-          {mobile && (
-            <Link
-              href="/bots"
-              aria-label="Back"
-              className="press absolute left-3 top-3 z-20 grid size-10 place-items-center rounded-full backdrop-blur-xl edge"
-              style={{ background: "color-mix(in oklch, var(--surface) 80%, transparent)" }}
-            >
-              <ArrowLeft size={18} />
-            </Link>
-          )}
-          <div className="absolute right-3 top-3 z-20 md:right-4">
-            <button
-              onClick={() => setPanelOpen((o) => !o)}
-              aria-label="Profile"
-              aria-pressed={panelOpen}
-              title="Profile"
-              className="press grid size-10 place-items-center rounded-full backdrop-blur-xl edge"
-              style={{ background: panelOpen ? "var(--surface-3)" : "color-mix(in oklch, var(--surface) 80%, transparent)" }}
-            >
-              <PanelRight size={17} />
-            </button>
-          </div>
-
-          <Presence bot={bot} status={derived} size={mobile ? 76 : 92} subtitle={subtitle} />
-          {interviewing && !writing && (
-            <div className="pointer-events-none absolute inset-x-0 z-10 flex justify-center" style={{ top: mobile ? 128 : 150 }}>
-              <button onClick={() => finishInterview(true)} className="press pointer-events-auto rounded-full px-2 py-0.5 text-[12px] text-[var(--text-3)] underline-offset-2 hover:underline">
-                Skip interview
-              </button>
-            </div>
-          )}
-
-          <div ref={scroller} data-testid="chat-scroller" onScroll={onScroll} className="fade-top thin-scroll absolute inset-0 overflow-y-auto px-3 pb-4 md:px-6" style={{ paddingTop: mobile ? 156 : 178 }}>
+          <div ref={scroller} data-testid="chat-scroller" onScroll={onScroll} className="thin-scroll absolute inset-0 overflow-y-auto px-3 pb-4 pt-6 [overflow-anchor:none] md:px-6">
             <div ref={content} className="mx-auto flex max-w-[680px] flex-col">
-              {visible.length === 0 && !interviewing && <div className="py-10 text-center text-[13px] text-[var(--text-3)]">Say hi to {bot.name}.</div>}
+              {visible.length === 0 && !interviewing && (
+                <div className="flex flex-col items-center gap-3 py-16 text-center">
+                  <Critter cfg={bot.avatar} size={96} pose={derived.pose} track pettable label={bot.name} />
+                  <div className="text-[15px] font-semibold">{bot.name}</div>
+                  <div className="text-[13px] text-[var(--text-3)]">Say hi to {bot.name}.</div>
+                </div>
+              )}
               {soulNote?.after === null && soulCard()}
               {visible.map((m, i) => {
                 const mine = m.role === "user";
@@ -410,9 +416,14 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
 
       {mobile && (
         <AnimatePresence>
-          {panelOpen && (
-            <Sheet label={`${bot.name}'s profile`} onClose={() => setPanelOpen(false)}>
-              <ProfilePanel bot={bot} onClose={() => setPanelOpen(false)}>
+          {pane === "computer" && (
+            <Sheet label={`${bot.name}'s computer`} onClose={() => setPane(null)}>
+              <SidePane bot={bot} onClose={() => setPane(null)} />
+            </Sheet>
+          )}
+          {pane === "profile" && (
+            <Sheet label={`${bot.name}'s profile`} onClose={() => setPane(null)}>
+              <ProfilePanel bot={bot} onClose={() => setPane(null)}>
                 <MemoryList bot={bot} version={memoryVersion} />
               </ProfilePanel>
             </Sheet>
@@ -420,14 +431,26 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
         </AnimatePresence>
       )}
 
-      {panelOpen && !mobile && (
+      {pane === "computer" && !mobile && (
+        <motion.div
+          key="computer"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.22, ease: ease.out }}
+          className="edge-l w-[340px] shrink-0 bg-[var(--panel)] max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-30"
+        >
+          <SidePane bot={bot} onClose={() => setPane(null)} />
+        </motion.div>
+      )}
+
+      {pane === "profile" && !mobile && (
         <motion.div
           initial={{ opacity: 0, x: 12 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.22, ease: ease.out }}
           className="edge-l w-[320px] shrink-0 bg-[var(--panel)] max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-30"
         >
-          <ProfilePanel bot={bot} onClose={() => setPanelOpen(false)}>
+          <ProfilePanel bot={bot} onClose={() => setPane(null)}>
             <MemoryList bot={bot} version={memoryVersion} />
           </ProfilePanel>
         </motion.div>

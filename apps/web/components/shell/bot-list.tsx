@@ -4,13 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { Plus, Search } from "lucide-react";
+import { ListChecks, Plus, Search, Settings2 } from "lucide-react";
 import { Critter } from "@/components/critter/critter";
 import { useBotStatus } from "@/lib/bot-status-store";
 import type { BotView } from "@/lib/client-types";
 import { botVars } from "@/lib/critter/palette";
 import { spring } from "@/lib/motion";
+import { InboxButton } from "@/components/notifications/inbox";
 import { useInbox } from "@/components/notifications/notifications-store";
+import { GridMark, ThemeToggle } from "./theme-toggle";
 import { useBots } from "./bots-store";
 
 export function formatWhen(iso: string, now = new Date()): string {
@@ -73,7 +75,8 @@ export function BotList({ compact = false }: { compact?: boolean }) {
             className="w-full bg-transparent text-[14px] text-[var(--text)] outline-none placeholder:text-[var(--text-3)]"
           />
         </label>
-        {/* On phones the list screen's header already has one. */}
+        {/* On phones the list screen's header already has these. */}
+        {!compact && <InboxButton />}
         {!compact && (
           <Link href="/new" className="press hover-surface grid size-9 place-items-center rounded-xl" aria-label="New bot" title="New bot">
             <Plus size={19} />
@@ -97,6 +100,26 @@ export function BotList({ compact = false }: { compact?: boolean }) {
           ))}
         </AnimatePresence>
       </div>
+      {!compact && (
+        <nav aria-label="Places" className="edge-t flex flex-col gap-0.5 px-2 py-2">
+          <Place href="/lists" icon={<ListChecks size={17} />} label="Lists" active={pathname.startsWith("/lists")} />
+          <Place href="/settings/models" icon={<Settings2 size={17} />} label="Settings" active={pathname.startsWith("/settings")} />
+          <div className="mt-1 flex items-center gap-2 px-2.5 text-[12.5px] text-[var(--text-3)]">
+            <GridMark size={16} />
+            <span className="flex-1">Grid</span>
+            <ThemeToggle />
+          </div>
+        </nav>
+      )}
     </div>
+  );
+}
+
+function Place({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active: boolean }) {
+  return (
+    <Link href={href} aria-current={active ? "page" : undefined} className={`press flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[14px] ${active ? "bg-[var(--surface-2)] text-[var(--text)]" : "hover-surface text-[var(--text-2)]"}`}>
+      {icon}
+      {label}
+    </Link>
   );
 }

@@ -9,7 +9,6 @@ import { BotList } from "./bot-list";
 import { BotsProvider } from "./bots-store";
 import { LiveEvents } from "./live-events";
 import { PhoneHome } from "./phone-home";
-import { Rail } from "./rail";
 
 /** Phone: the list lives at /bots; a chat or the Studio slides in over it. Swipe from the left edge to go back. */
 function PhoneShell({ children }: { children: React.ReactNode }) {
@@ -50,8 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         ) : (
           <div className="flex h-dvh w-full overflow-hidden">
             <div className="hidden md:flex">
-              <Rail />
-              <aside className="edge-r w-[300px] shrink-0 bg-[var(--panel)]">
+              <aside aria-label="Bots" className="edge-r w-[300px] shrink-0 bg-[var(--panel)]">
                 <BotList />
               </aside>
             </div>

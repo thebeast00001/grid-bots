@@ -80,7 +80,7 @@ function Popover({ onClose }: { onClose: () => void }) {
       exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.12 } }}
       transition={spring.snappy}
       style={{ transformOrigin: "top left" }}
-      className="fixed left-[68px] top-3 z-50 flex max-h-[min(640px,85vh)] w-[380px] flex-col overflow-hidden rounded-[22px] bg-[var(--panel)] edge"
+      className="fixed left-[308px] top-3 z-50 flex max-h-[min(640px,85vh)] w-[380px] flex-col overflow-hidden rounded-[22px] bg-[var(--panel)] edge"
     >
       <InboxPanel onClose={onClose} />
     </motion.div>
