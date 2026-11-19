@@ -1,6 +1,6 @@
 import { streamText } from "ai";
 import { resetDbForTests } from "../db/client";
-import { setSetting } from "../settings";
+import { deleteSetting, setSetting } from "../settings";
 import { useTempHome } from "../test-home";
 import { addProvider } from "./providers-repo";
 import { resolveModel } from "./resolve";
@@ -21,6 +21,13 @@ test("resolveModel falls back to the default model", async () => {
   expect(await result.text).toBe("You said: hi");
 });
 
-test("resolveModel with a removed provider throws no-model", async () => {
-  await expect(resolveModel({ providerId: "gone", modelId: "x" })).rejects.toMatchObject({ code: "no-model" });
+test("a bot model whose provider was removed falls back to the default", async () => {
+  const r = await resolveModel({ providerId: "gone", modelId: "x" });
+  expect(r.kind).toBe("mock");
+});
+
+test("with a model connected but no default, the error points to Settings, not Connect", async () => {
+  await deleteSetting("defaultModel");
+  await expect(resolveModel(null)).rejects.toMatchObject({ code: "no-model", action: { href: "/settings/models" } });
+  await expect(resolveModel({ providerId: "gone", modelId: "x" })).rejects.toMatchObject({ action: { href: "/settings/models" } });
 });

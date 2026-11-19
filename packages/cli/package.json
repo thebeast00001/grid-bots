@@ -16,7 +16,7 @@
   },
   "scripts": {
     "bundle": "node scripts/bundle.mjs",
-    "test": "node --test test/cli.test.mjs"
+    "test": "node --test test/runtime.test.mjs test/cli.test.mjs"
   },
   "keywords": ["ai", "agents", "bots", "chatgpt", "ollama", "local-first", "self-hosted"]
 }

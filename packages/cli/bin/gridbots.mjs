@@ -95,18 +95,25 @@ function restoreLinks(dir) {
   }
 }
 
-/** First run of each version: unpack the bundled server into GRID_HOME/runtime/<version>. */
+/** Which build the bundled app is (scripts/bundle.mjs writes it); the version for older bundles. */
+function bundleId(bundled) {
+  const file = path.join(bundled, "bundle-id");
+  return existsSync(file) ? readFileSync(file, "utf8").trim() : version;
+}
+
+/** First run of each build: unpack the bundled server into GRID_HOME/runtime/<version>. */
 function ensureRuntime(home) {
   const runtime = path.join(home, "runtime", version);
   const server = path.join(runtime, "apps/web/server.js");
   const ready = path.join(runtime, ".ready");
-  if (existsSync(ready)) return server;
   const bundled = path.join(pkgDir, "app");
   if (!existsSync(bundled)) {
     console.error("This copy of gridbots has no bundled app. If you're in the repo, run `pnpm bundle:cli` first.");
     process.exit(1);
   }
-  console.log("Setting up Grid (first run of this version)…");
+  const id = bundleId(bundled);
+  if (existsSync(ready) && readFileSync(ready, "utf8").trim() === id) return server;
+  console.log("Setting up Grid (first run of this build)…");
   const tmp = `${runtime}.tmp-${process.pid}`;
   rmSync(tmp, { recursive: true, force: true });
   cpSync(bundled, tmp, { recursive: true });
@@ -115,7 +122,7 @@ function ensureRuntime(home) {
   renameSync(tmp, runtime);
   // Links go in after the move: a Windows junction stores an absolute path.
   restoreLinks(runtime);
-  writeFileSync(ready, `${version}\n`);
+  writeFileSync(ready, `${id}\n`);
   return server;
 }
 

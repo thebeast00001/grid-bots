@@ -13,7 +13,7 @@ import { chatgptModel } from "./chatgpt/model";
 import { GridModelError } from "./errors";
 import { PROVIDER_KINDS, type ModelRef, type ProviderKind } from "./kinds";
 import { mockModel } from "./mock";
-import { loadProvider, type LoadedProvider } from "./providers-repo";
+import { listProviders, loadProvider, type LoadedProvider } from "./providers-repo";
 
 export type ResolvedModel = { model: LanguageModel; ref: ModelRef; tools: boolean; kind: ProviderKind };
 
@@ -66,15 +66,25 @@ async function supportsTools(p: LoadedProvider, modelId: string): Promise<boolea
   return tools;
 }
 
-/** The bot's model, else the default model, else a no-model error with a way to fix it. */
-export async function resolveModel(ref?: ModelRef | null): Promise<ResolvedModel> {
-  const r = ref ?? (await getSetting<ModelRef>("defaultModel"));
-  if (!r) throw NO_MODEL();
-  let p: LoadedProvider;
+const NO_DEFAULT = () =>
+  new GridModelError("no-model", "Pick a default model for your bots.", { action: { label: "Choose a model", href: "/settings/models" } });
+
+async function tryLoad(ref: ModelRef | null | undefined): Promise<{ p: LoadedProvider; r: ModelRef } | null> {
+  if (!ref) return null;
   try {
-    p = await loadProvider(r.providerId);
+    return { p: await loadProvider(ref.providerId), r: ref };
   } catch {
-    throw NO_MODEL();
+    return null; // Its connection was removed.
   }
+}
+
+/**
+ * The bot's model, else the default model (also when the bot's connection was removed),
+ * else a no-model error whose action fits: connect one, or pick a default among those connected.
+ */
+export async function resolveModel(ref?: ModelRef | null): Promise<ResolvedModel> {
+  const found = (await tryLoad(ref)) ?? (await tryLoad(await getSetting<ModelRef>("defaultModel")));
+  if (!found) throw (await listProviders()).length > 0 ? NO_DEFAULT() : NO_MODEL();
+  const { p, r } = found;
   return { model: makeModel(p, r.modelId), ref: r, tools: await supportsTools(p, r.modelId), kind: p.kind };
 }

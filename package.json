@@ -13,6 +13,6 @@
     "e2e": "pnpm --filter @grid/web e2e",
     "typecheck": "pnpm --filter @grid/web typecheck",
     "bundle:cli": "node packages/cli/scripts/bundle.mjs",
-    "test:cli": "node --test packages/cli/test/cli.test.mjs"
+    "test:cli": "node --test packages/cli/test/runtime.test.mjs packages/cli/test/cli.test.mjs"
   }
 }

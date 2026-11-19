@@ -46,6 +46,8 @@ function collectLinks(dir, links) {
 }
 const links = collectLinks(out, []);
 writeFileSync(path.join(out, "links.json"), `${JSON.stringify(links, null, 2)}\n`);
+// Identifies this build, so the CLI re-unpacks a rebuilt bundle of the same version.
+writeFileSync(path.join(out, "bundle-id"), `${Date.now().toString(36)}-${process.pid}\n`);
 
 /** Renames every node_modules folder under `dir` to _modules. */
 function hideNodeModules(dir) {
