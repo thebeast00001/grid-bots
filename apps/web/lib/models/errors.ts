@@ -71,6 +71,14 @@ export function toGridError(e: unknown, providerLabel = "the model server"): Gri
   if (networkCode(e) || (e instanceof TypeError && /fetch failed/i.test(e.message))) {
     return new GridModelError("network", `Can't reach ${providerLabel}.`, { cause: e });
   }
-  const message = e instanceof Error ? e.message : String(e);
+  // Never String() an object: that shows people "[object Object]".
+  const message =
+    e instanceof Error && e.message
+      ? e.message
+      : typeof e === "string" && e
+        ? e
+        : status !== undefined
+          ? `Something went wrong (error ${status}). Try again.`
+          : "Something went wrong. Try again.";
   return new GridModelError("unknown", message, { cause: e });
 }

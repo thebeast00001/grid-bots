@@ -29,3 +29,9 @@ test("unknown errors become unknown with their message", () => {
   const g = toGridError(new Error("boom"));
   expect(g).toMatchObject({ code: "unknown", message: "boom" });
 });
+
+test("an unknown non-Error value never becomes [object Object]", () => {
+  expect(toGridError({ status: 418 }).message).not.toContain("[object Object]");
+  expect(toGridError({ status: 418 }).message).toBe("Something went wrong (error 418). Try again.");
+  expect(toGridError({}).message).toBe("Something went wrong. Try again.");
+});

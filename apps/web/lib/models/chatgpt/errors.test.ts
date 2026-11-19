@@ -28,3 +28,10 @@ test("mapChatgptError falls back to status mapping and reads {detail}", () => {
   expect(mapChatgptError(401, { detail: "nope" }).code).toBe("auth");
   expect(mapChatgptError(500, null).code).toBe("unavailable");
 });
+
+test("an error Grid doesn't know shows OpenAI's own message, never [object Object]", () => {
+  const notFound = mapChatgptError(404, { error: { message: "Item with id 'msg_1' not found.", type: "invalid_request_error" } });
+  expect(notFound.message).toBe("ChatGPT couldn't answer: Item with id 'msg_1' not found.");
+  expect(mapChatgptError(404, null).message).toBe("ChatGPT couldn't answer (error 404). Try again.");
+  expect(mapChatgptError(404, { detail: "Not Found" }).message).toBe("ChatGPT couldn't answer: Not Found");
+});
