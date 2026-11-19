@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, Check, TriangleAlert } from "lucide-react";
-import { toast } from "sonner";
 import { SettingsNav } from "@/components/settings/settings-nav";
 import { api } from "@/lib/api-client";
 
@@ -23,6 +22,7 @@ export default function WebSettings() {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = (next: State) => {
     setS(next);
@@ -44,10 +44,11 @@ export default function WebSettings() {
   const save = async (service: { kind: Kind; key?: string; url?: string } | null) => {
     setBusy(true);
     setTest(null);
+    setError(null);
     try {
       load(await api<State>("/api/web", { method: "PATCH", body: JSON.stringify({ service }) }));
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Couldn't save that.");
+      setError(e instanceof Error ? e.message : "Couldn't save that.");
     } finally {
       setBusy(false);
     }
@@ -57,6 +58,7 @@ export default function WebSettings() {
     setPick(id);
     setKey("");
     setTest(null);
+    setError(null);
     if (id === "off" && saved) void save(null);
   };
 
@@ -154,8 +156,13 @@ export default function WebSettings() {
                   <input aria-label="SearXNG address" inputMode="url" spellCheck={false} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="http://localhost:8888" className={field} />
                 </label>
               )}
+              {error && (
+                <p role="alert" className="text-[13px] text-[var(--danger)]">
+                  {error}
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-2">
-                {(dirty || pick === "test") && (
+                {dirty && (
                   <button type="submit" disabled={busy || (needsKey && !key.trim() && !keyKept)} className="press rounded-full px-3.5 py-1.5 text-[13px] font-semibold disabled:opacity-50" style={{ background: "var(--bot)", color: "var(--bot-ink)" }}>
                     Save
                   </button>

@@ -162,3 +162,31 @@ describe("research", () => {
     expect(await r.text).toBe("Here's what I found about today's grid news [1][2].");
   });
 });
+
+test("deep dive: three searches, six pages at once, and an answer citing everything", async () => {
+  const calls: string[] = [];
+  let next = 0;
+  const tools: ToolSet = {
+    web_search: tool({
+      description: "search",
+      inputSchema: z.object({ query: z.string() }),
+      execute: async ({ query }) => {
+        calls.push(`search ${query}`);
+        return { ok: true, results: [0, 1, 2].map(() => ({ n: ++next, url: `https://s.example/${next}`, title: `R${next}`, site: "s.example", snippet: "" })) };
+      },
+    }),
+    read_page: tool({
+      description: "read",
+      inputSchema: z.object({ url: z.string() }),
+      execute: async ({ url }) => {
+        calls.push(`read ${url}`);
+        return { ok: true, n: Number(url.split("/").pop()), url, title: "T", site: "s.example", text: "x" };
+      },
+    }),
+  };
+  const r = streamText({ model: mockModel(), prompt: "deep dive into pune cafes", tools, stopWhen: isStepCount(6) });
+  const text = await r.text;
+  expect(calls.filter((c) => c.startsWith("search"))).toHaveLength(3);
+  expect(calls.filter((c) => c.startsWith("read"))).toHaveLength(6);
+  for (let n = 1; n <= 9; n++) expect(text).toContain(`[${n}]`);
+});

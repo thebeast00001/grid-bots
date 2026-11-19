@@ -103,7 +103,8 @@ export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, ani
   // Research: numbered sources, citation links in the text, chips under it.
   const sources = useMemo(() => (mine ? [] : sourcesOf(m.parts)), [m.parts, mine]);
   const components = useMemo(() => citeComponents(sources), [sources]);
-  const chips = sources.length ? shownSources(sources, text) : sources;
+  // Chips once there's an answer to go with them, not while the bot is still reading.
+  const chips = sources.length && text ? shownSources(sources, text) : [];
   const fine = typeof window !== "undefined" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
   return (

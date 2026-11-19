@@ -48,6 +48,30 @@ test("a search shows its work, then answers with citations and source chips that
   void context;
 });
 
+test("sources wait for the answer; a big reply shows six chips, then the rest on request", async ({ page }) => {
+  await useTestSearch(page);
+  const send = await chat(page, "Deep");
+  await send("deep dive into pune cafes");
+  const working = page.getByTestId("bot-message").last();
+  await expect(working.getByText(/Reading grid\.test/).first()).toBeVisible({ timeout: 20_000 });
+  await expect(working.getByTestId("source-chip")).toHaveCount(0);
+
+  const reply = page.getByTestId("bot-message").filter({ hasText: "Deep dive on pune cafes" });
+  await expect(reply.getByRole("button", { name: "Searched 3 times · read 5 pages · 1 couldn't be read" })).toBeVisible({ timeout: 20_000 });
+  await expect(reply.getByTestId("source-chip")).toHaveCount(6);
+  await reply.getByRole("button", { name: "+12 more" }).click();
+  await expect(reply.getByTestId("source-chip")).toHaveCount(18);
+  await expect(reply.getByTestId("cite")).toHaveCount(18);
+});
+
+test("a failed search says so", async ({ page }) => {
+  await useTestSearch(page);
+  const send = await chat(page, "Unlucky");
+  await send("search for make it fail");
+  const reply = page.getByTestId("bot-message").filter({ hasText: "I couldn't search: Test search is down." });
+  await expect(reply.getByRole("button", { name: "Search failed" })).toBeVisible({ timeout: 20_000 });
+});
+
 test("without a search service the bot says where to turn search on", async ({ page }) => {
   const send = await chat(page, "Plain");
   await send("search for grid bots");
@@ -85,8 +109,14 @@ test("Settings → Web: save Brave without ever showing the key, test a service,
   await page.getByRole("radio", { name: /^Off/ }).click();
   await expect.poll(async () => (await (await page.request.get("/api/web")).json()).service).toBeNull();
 
+  await page.getByRole("radio", { name: /SearXNG/ }).click();
+  await page.getByLabel("SearXNG address").fill("ftp://nope");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.locator("form").getByRole("alert")).toHaveText("Use an http or https address for SearXNG.");
+
   await useTestSearch(page);
   await page.reload();
+  await expect(page.getByRole("button", { name: "Save" })).toHaveCount(0); // nothing to save
   await page.getByRole("button", { name: "Test" }).click();
   await expect(page.getByText("Works — 6 results")).toBeVisible();
 });

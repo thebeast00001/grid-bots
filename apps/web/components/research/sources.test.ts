@@ -73,3 +73,22 @@ test("the status line says what the research is doing", () => {
   ).toEqual({ pose: "working", text: "Reading 3 pages…" });
   expect(deriveStatus({ chat: "streaming", last: last([read("input-available", "https://a/1")]), justFinished: false })).toEqual({ pose: "working", text: "Reading a page…" });
 });
+
+test("the folded line says when a search failed", async () => {
+  const { summary } = await import("./sources");
+  const failed = { kind: "search" as const, query: "q", state: "failed" as const, error: "down" };
+  const ok = { kind: "search" as const, query: "q", state: "done" as const, count: 6 };
+  const page = { kind: "read" as const, url: "https://a/", site: "a", state: "done" as const };
+  expect(summary([failed])).toBe("Search failed");
+  expect(summary([ok, failed, page])).toBe("Searched once · 1 search failed · read 1 page");
+  expect(summary([ok, page])).toBe("Searched once · read 1 page");
+});
+
+test("a model's own sources become chips only for http(s) links", () => {
+  const all = sourcesOf([
+    { type: "source-url", sourceId: "a", url: "javascript:alert(1)", title: "Bad" },
+    { type: "source-url", sourceId: "b", url: "data:text/html,hi" },
+    { type: "source-url", sourceId: "c", url: "https://fine.example/x", title: "Fine" },
+  ] as unknown as Parts);
+  expect(all.map((s) => s.url)).toEqual(["https://fine.example/x"]);
+});

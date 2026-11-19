@@ -106,7 +106,13 @@ function testSearch(query: string): SearchOutcome {
   const paths = ["/guide", "/pricing", "/hindi", "/long-title", "/slow", "/broken"];
   return {
     ok: true,
-    results: paths.map((p) => ({ title: FIXTURES[p].title || "Broken page", url: `https://grid.test${p}`, site: "grid.test", snippet: `About ${query}: a page on the Grid test site.` })),
+    // A "deep" query gets its own addresses, so several searches can fill a reply with sources.
+    results: paths.map((p) => ({
+      title: FIXTURES[p].title || "Broken page",
+      url: `https://grid.test${p}${/deep/i.test(query) ? `?q=${encodeURIComponent(query)}` : ""}`,
+      site: "grid.test",
+      snippet: `About ${query}: a page on the Grid test site.`,
+    })),
   };
 }
 

@@ -129,3 +129,12 @@ test("which providers search on their own", () => {
   expect(builtInSearch("anthropic")).toEqual({ label: "Claude's own search" });
   for (const k of ["google", "xai", "groq", "mistral", "deepseek", "openrouter", "ollama", "lmstudio", "custom", "mock"] as const) expect(builtInSearch(k)).toBeNull();
 });
+
+test("the test service gives each deep search its own addresses", async () => {
+  await setSearchService({ kind: "test" });
+  const a = await search("pune deep 1");
+  const b = await search("pune deep 2");
+  const urls = [...(a.ok ? a.results : []), ...(b.ok ? b.results : [])].map((r) => r.url);
+  expect(new Set(urls).size).toBe(urls.length);
+  expect(urls[0]).toMatch(/^https:\/\/grid\.test\/guide\?q=/);
+});

@@ -18,12 +18,16 @@ export const siteOf = (url: string) => {
   }
 };
 
+/** Only web links become chips or citations (never javascript:, data: and the like). */
+const isWeb = (url: unknown): url is string => typeof url === "string" && /^https?:\/\//i.test(url);
+
 const done = (p: ToolPart) => p.state === "output-available";
 const failedState = (p: ToolPart) => p.state === "output-error";
 
 export function sourcesOf(parts: Parts): Source[] {
   const byUrl = new Map<string, Source>();
   const put = (s: Source) => {
+    if (!isWeb(s.url)) return;
     const had = byUrl.get(s.url);
     if (!had) byUrl.set(s.url, s);
     else if (s.read && !had.read) byUrl.set(s.url, { ...had, title: s.title || had.title, read: true });
@@ -31,7 +35,7 @@ export function sourcesOf(parts: Parts): Source[] {
   const own: { url: string; title?: string }[] = [];
   for (const raw of parts) {
     const p = raw as ToolPart & { url?: string; title?: string };
-    if (p.type === "source-url" && p.url) own.push({ url: p.url, title: p.title });
+    if (p.type === "source-url" && isWeb(p.url)) own.push({ url: p.url, title: p.title });
     if (!done(p) || !p.output || p.providerExecuted) continue;
     const o = p.output as { ok?: boolean; n?: number; url?: string; title?: string; site?: string; results?: Source[] };
     if (p.type === "tool-web_search" && o.ok) o.results?.forEach((r) => put({ n: r.n, url: r.url, title: r.title, site: r.site, read: false }));
@@ -107,9 +111,15 @@ const pages = (n: number) => (n === 1 ? "1 page" : `${n} pages`);
 
 /** "Searched once · read 2 pages" */
 export function summary(steps: Step[]): string {
-  const searches = steps.filter((s) => s.kind === "search").length;
-  const reads = steps.filter((s) => s.kind === "read" && s.state === "done").length;
-  const failed = steps.filter((s) => s.kind === "read" && s.state === "failed").length;
-  const bits = [searches ? `Searched ${times(searches)}` : "", reads ? `${searches ? "read" : "Read"} ${pages(reads)}` : "", failed ? `${failed} couldn't be read` : ""].filter(Boolean);
-  return bits.join(" · ") || "Looked on the web";
+  const count = (kind: Step["kind"], ok: boolean) => steps.filter((s) => s.kind === kind && (ok ? s.state !== "failed" : s.state === "failed")).length;
+  const [searches, badSearches, reads, badReads] = [count("search", true), count("search", false), count("read", true), count("read", false)];
+  if (badSearches && !searches && !reads && !badReads) return badSearches === 1 ? "Search failed" : `${badSearches} searches failed`;
+  const bits = [
+    searches ? `searched ${times(searches)}` : "",
+    badSearches ? `${badSearches} ${badSearches === 1 ? "search" : "searches"} failed` : "",
+    reads ? `read ${pages(reads)}` : "",
+    badReads ? `${badReads} couldn't be read` : "",
+  ].filter(Boolean);
+  const line = bits.join(" · ") || "looked on the web";
+  return line[0].toUpperCase() + line.slice(1);
 }

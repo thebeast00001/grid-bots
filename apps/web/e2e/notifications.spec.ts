@@ -125,3 +125,12 @@ test("quiet hours hold a routine result; 'Only what matters' holds an ordinary o
   await expect(inbox(page).getByTestId("inbox-item").filter({ hasText: "Not important" })).toHaveCount(1, { timeout: 20_000 });
   await expect(toastWith(page, "Daily digest")).toHaveCount(0);
 });
+
+test("a settings save that fails says so", async ({ page }) => {
+  await page.route("**/api/settings", (route) =>
+    route.request().method() === "PATCH" ? route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: { code: "unknown", message: "The disk is full." } }) }) : route.continue(),
+  );
+  await page.goto("/settings/notifications");
+  await page.getByRole("radio", { name: /Only what matters/ }).click();
+  await expect(toastWith(page, "The disk is full.")).toBeVisible();
+});

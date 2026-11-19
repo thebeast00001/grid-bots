@@ -115,6 +115,27 @@ function research(request: string, options: LanguageModelV4CallOptions, prompt: 
     return textParts(r.ok ? `That page is “${r.title}” [${r.n}].` : `I couldn't read it: ${r.error}`);
   }
 
+  // Worst case for the screen: three searches, six pages (some slow, broken or not in English), everything cited.
+  const deep = /^deep dive into\s+(.+?)[.?!]*$/i.exec(request);
+  if (deep) {
+    const topic = deep[1].trim();
+    if (!offered("web_search")) return textParts("I can't search the web here.");
+    const searches = results.filter((r) => r.toolName === "web_search").map((r) => r.value);
+    if (!searches.length) return toolCalls([1, 2, 3].map((i) => ({ name: "web_search", input: { query: `${topic} deep ${i}` } })), tag);
+    type Hit = { url: string; n: number };
+    if (!reads.length) {
+      const order = [[2, 3], [5, 4], [0, 1]];
+      const pick = searches.flatMap((x, i) => {
+        const rs = (x.results ?? []) as Hit[];
+        const want = order[i % 3].map((j) => rs[j]).filter(Boolean);
+        return want.length === 2 ? want : rs.slice(0, 2);
+      });
+      return toolCalls(pick.slice(0, 6).map((h) => ({ name: "read_page", input: { url: h.url } })), tag);
+    }
+    const parts = searches.map((x, i) => `Finding ${i + 1} about ${topic} ${((x.results ?? []) as Hit[]).map((h) => `[${h.n}]`).join("")}.`);
+    return textParts(`Deep dive on ${topic}. ${parts.join(" ")}`);
+  }
+
   const q = /^(?:search(?: the web)? for|look up)\s+(.+?)[.?!]*$/i.exec(request);
   if (!q) return null;
   const query = q[1].trim();
