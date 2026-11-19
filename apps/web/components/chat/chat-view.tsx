@@ -22,6 +22,8 @@ import { deriveStatus, parseChatError } from "./derive-status";
 import { MessageRow } from "./message-row";
 import { timeBreaks } from "./time-breaks";
 import { Critter } from "@/components/critter/critter";
+import { Computer } from "@/components/computer/computer";
+import { screenOf } from "@/components/computer/screen";
 import { SidePane } from "@/components/computer/side-pane";
 import { ChatHeader, type Pane } from "./chat-header";
 
@@ -217,6 +219,10 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
 
   // Times over each stretch of the conversation (messages loaded from the server carry `at`).
   const breaks = useMemo(() => timeBreaks(visible, { locale: typeof navigator === "undefined" ? undefined : navigator.language }), [visible]);
+  // What's on the bot's screen: the reply it's working on, or a routine it's running.
+  const lastBot = [...visible].reverse().find((m) => m.role === "assistant");
+  const working = status === "streaming" || status === "submitted";
+  const screen = screenOf(working && visible.at(-1)?.role !== "assistant" ? [] : (lastBot?.parts ?? []), { streaming: working, run: routineRun });
   const lastLen = useRef(visible.length);
   const [unseen, setUnseen] = useState(0);
   useLayoutEffect(() => {
@@ -427,7 +433,7 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
         <AnimatePresence>
           {pane === "computer" && (
             <Sheet label={`${bot.name}'s computer`} onClose={() => setPane(null)}>
-              <SidePane bot={bot} onClose={() => setPane(null)} />
+              <SidePane bot={bot} onClose={() => setPane(null)} screen={<Computer bot={bot} screen={screen} />} />
             </Sheet>
           )}
           {pane === "profile" && (
@@ -448,7 +454,7 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
           transition={{ duration: 0.22, ease: ease.out }}
           className="edge-l w-[340px] shrink-0 bg-[var(--panel)] max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:z-30"
         >
-          <SidePane bot={bot} onClose={() => setPane(null)} />
+          <SidePane bot={bot} onClose={() => setPane(null)} screen={<Computer bot={bot} screen={screen} />} />
         </motion.div>
       )}
 

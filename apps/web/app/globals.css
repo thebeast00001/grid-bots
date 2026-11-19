@@ -125,6 +125,15 @@ body { overflow: hidden; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .thin-scroll { scrollbar-width: thin; scrollbar-color: var(--edge-strong) transparent; }
 
+/* The bot's screen: a band moving down the page it reads, a loading bar, a writing caret. */
+@keyframes screen-scan { 0% { transform: translateY(-40%); } 100% { transform: translateY(460%); } }
+.screen-scan { animation: screen-scan 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+@keyframes screen-bar { 0% { transform: translateX(-110%); } 100% { transform: translateX(330%); } }
+.screen-bar { animation: screen-bar 1.15s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+@keyframes screen-caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.screen-caret { animation: screen-caret 1s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .screen-scan, .screen-bar, .screen-caret { animation: none; } }
+
 /* Streaming words: fade + un-blur, no typewriter */
 .tok { animation: tok-in 160ms var(--ease-out) both; }
 @keyframes tok-in { from { opacity: 0; filter: blur(2px); } to { opacity: 1; filter: blur(0); } }
