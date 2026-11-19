@@ -37,7 +37,7 @@ export function Composer(p: Props) {
     const el = ta.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   };
 
   const upload = async (list: FileList | null) => {
@@ -91,7 +91,7 @@ export function Composer(p: Props) {
 
   return (
     <div className="shrink-0 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-1 md:px-6 md:pb-4">
-      <div className="mx-auto max-w-[680px]">
+      <div className="mx-auto max-w-[720px]">
         <AnimatePresence initial={false}>
           {p.quote && (
             <motion.div
@@ -117,7 +117,7 @@ export function Composer(p: Props) {
           </p>
         )}
 
-        <div data-testid="composer-box" className="rounded-[26px] bg-[var(--surface)] p-1.5 edge field">
+        <div data-testid="composer-box" className="field rounded-[22px] bg-[var(--surface)] px-3 pb-2.5 pt-3 edge transition-[border-color] duration-150">
           {files.length > 0 && (
             <div className="flex flex-wrap gap-2 px-1.5 pb-1.5 pt-1">
               {files.map((f, i) => (
@@ -146,65 +146,62 @@ export function Composer(p: Props) {
               ))}
             </div>
           )}
-          <div className="flex items-end gap-1.5">
-            <input
-              ref={input}
-              type="file"
-              multiple
-              aria-label="Attach a file"
-              accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/plain,text/markdown"
-              className="sr-only"
-              onChange={(e) => upload(e.target.files)}
-            />
-            <button onClick={() => input.current?.click()} className="press hover-surface grid size-9 shrink-0 place-items-center rounded-full text-[var(--text-2)]" aria-label="Add a file" title="Add a file">
-              <Plus size={19} />
+          <input
+            ref={input}
+            type="file"
+            multiple
+            aria-label="Attach a file"
+            accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/plain,text/markdown"
+            className="sr-only"
+            onChange={(e) => upload(e.target.files)}
+          />
+          <textarea
+            ref={ta}
+            rows={1}
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              grow();
+            }}
+            onPaste={(e) => {
+              if (e.clipboardData.files.length) {
+                e.preventDefault();
+                upload(e.clipboardData.files);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                submit();
+              }
+            }}
+            placeholder={`Message ${p.botName}`}
+            className="block max-h-[200px] min-h-[26px] w-full resize-none bg-transparent px-1 text-[15.5px] leading-[1.55] outline-none placeholder:text-[var(--text-3)]"
+          />
+          <div className="relative mt-2 flex items-center gap-1">
+            <button onClick={() => input.current?.click()} className="press hover-surface grid size-8 shrink-0 place-items-center rounded-full text-[var(--text-2)]" aria-label="Add a file" title="Add a file">
+              <Plus size={18} />
             </button>
-            <textarea
-              ref={ta}
-              rows={1}
-              value={text}
-              onChange={(e) => {
-                setText(e.target.value);
-                grow();
-              }}
-              onPaste={(e) => {
-                if (e.clipboardData.files.length) {
-                  e.preventDefault();
-                  upload(e.clipboardData.files);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  submit();
-                }
-              }}
-              placeholder={`Message ${p.botName}`}
-              className="max-h-[160px] min-h-9 flex-1 resize-none bg-transparent py-[7px] text-[15px] leading-[1.45] outline-none placeholder:text-[var(--text-3)]"
-            />
+            <div className="flex-1" />
+            {p.chatgpt && <ChatgptBadge />}
+            <button onClick={() => setPicker((v) => !v)} className="press hover-surface inline-flex h-8 max-w-[220px] items-center gap-1 rounded-full px-2.5 text-[12.5px] text-[var(--text-2)]" aria-expanded={picker}>
+              <span className="truncate">{p.modelLabel}</span> <ChevronDown size={12} className="shrink-0" />
+            </button>
             <AnimatePresence mode="popLayout" initial={false}>
               {p.busy ? (
-                <motion.button key="stop" {...pop} onClick={p.onStop} className="press grid size-9 shrink-0 place-items-center rounded-full bg-[var(--surface-2)]" aria-label="Stop">
-                  <Square size={14} fill="currentColor" />
+                <motion.button key="stop" {...pop} onClick={p.onStop} className="press grid size-8 shrink-0 place-items-center rounded-full bg-[var(--text)] text-[var(--bg)]" aria-label="Stop">
+                  <Square size={12} fill="currentColor" />
                 </motion.button>
               ) : has ? (
-                <motion.button key="send" {...pop} onClick={submit} disabled={queued} className="press grid size-9 shrink-0 place-items-center rounded-full" style={{ background: "var(--bot)", color: "var(--bot-ink)" }} aria-label="Send">
-                  {queued ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={18} strokeWidth={2.4} />}
+                <motion.button key="send" {...pop} onClick={submit} disabled={queued} className="press grid size-8 shrink-0 place-items-center rounded-full bg-[var(--text)] text-[var(--bg)]" aria-label="Send">
+                  {queued ? <Loader2 size={15} className="animate-spin" /> : <ArrowUp size={17} strokeWidth={2.4} />}
                 </motion.button>
               ) : (
-                <motion.span key="mic" {...pop} className="grid size-9 shrink-0 place-items-center rounded-full text-[var(--text-3)]" title="Voice notes arrive in a later version">
-                  <Mic size={18} />
+                <motion.span key="mic" {...pop} className="grid size-8 shrink-0 place-items-center rounded-full text-[var(--text-3)]" title="Voice notes arrive in a later version">
+                  <Mic size={17} />
                 </motion.span>
               )}
             </AnimatePresence>
-          </div>
-        </div>
-
-        <div className="relative mt-1.5 flex items-center justify-between gap-2 px-2">
-          <button onClick={() => setPicker((v) => !v)} className="press hover-surface inline-flex h-7 items-center gap-1 rounded-full px-2 text-[12px] text-[var(--text-3)]" aria-expanded={picker}>
-            {p.modelLabel} <ChevronDown size={12} />
-          </button>
-          {p.chatgpt && <ChatgptBadge />}
           <AnimatePresence>
             {picker && (
               <motion.div
@@ -212,8 +209,8 @@ export function Composer(p: Props) {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.12 } }}
                 transition={{ duration: 0.16, ease: ease.out }}
-                style={{ transformOrigin: "bottom left" }}
-                className="absolute bottom-9 left-0 z-20 w-[300px] rounded-2xl bg-[var(--surface)] p-3 edge"
+                style={{ transformOrigin: "bottom right" }}
+                className="absolute bottom-11 right-0 z-20 w-[300px] rounded-2xl bg-[var(--surface)] p-3 edge"
               >
                 <ModelPicker
                   label={`${p.botName}'s model`}
@@ -227,6 +224,7 @@ export function Composer(p: Props) {
               </motion.div>
             )}
           </AnimatePresence>
+          </div>
         </div>
       </div>
     </div>

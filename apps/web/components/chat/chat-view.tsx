@@ -20,6 +20,7 @@ import { ease, spring } from "@/lib/motion";
 import { Composer } from "./composer";
 import { deriveStatus, parseChatError } from "./derive-status";
 import { MessageRow } from "./message-row";
+import { timeBreaks } from "./time-breaks";
 import { Critter } from "@/components/critter/critter";
 import { SidePane } from "@/components/computer/side-pane";
 import { ChatHeader, type Pane } from "./chat-header";
@@ -214,6 +215,8 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
       </motion.div>
     );
 
+  // Times over each stretch of the conversation (messages loaded from the server carry `at`).
+  const breaks = useMemo(() => timeBreaks(visible, { locale: typeof navigator === "undefined" ? undefined : navigator.language }), [visible]);
   const lastLen = useRef(visible.length);
   const [unseen, setUnseen] = useState(0);
   useLayoutEffect(() => {
@@ -304,7 +307,7 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
         />
         <div className="relative min-h-0 flex-1">
           <div ref={scroller} data-testid="chat-scroller" onScroll={onScroll} className="thin-scroll absolute inset-0 overflow-y-auto px-3 pb-4 pt-6 [overflow-anchor:none] md:px-6">
-            <div ref={content} className="mx-auto flex max-w-[680px] flex-col">
+            <div ref={content} className="mx-auto flex max-w-[720px] flex-col">
               {visible.length === 0 && !interviewing && (
                 <div className="flex flex-col items-center gap-3 py-16 text-center">
                   <Critter cfg={bot.avatar} size={96} pose={derived.pose} track pettable label={bot.name} />
@@ -315,9 +318,15 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
               {soulNote?.after === null && soulCard()}
               {visible.map((m, i) => {
                 const mine = m.role === "user";
+                const breakLabel = breaks.get(m.id);
                 const readAt = (m.metadata as { readAt?: string } | undefined)?.readAt;
                 return (
                   <Fragment key={m.id}>
+                    {breakLabel && (
+                      <div data-testid="time-break" className="tnum mb-1 mt-7 text-center text-[12px] font-medium text-[var(--text-3)]">
+                        {breakLabel}
+                      </div>
+                    )}
                     <MessageRow
                       m={m}
                       botId={bot.id}

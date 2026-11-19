@@ -127,11 +127,11 @@ export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, ani
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={spring.snappy}
       style={{ transformOrigin: mine ? "bottom right" : "bottom left" }}
-      className={`group flex flex-col ${mine ? "items-end" : "items-start"} ${firstOfGroup ? "mt-4" : "mt-1"}`}
+      className={`group flex flex-col ${mine ? "items-end" : "items-start"} ${firstOfGroup ? (mine ? "mt-7" : "mt-5") : "mt-1.5"}`}
     >
       <div
         data-testid={mine ? "user-message" : "bot-message"}
-        className="relative max-w-[82%]"
+        className={`relative ${mine ? "max-w-[78%]" : "w-full"}`}
         onPointerEnter={() => fine && setToolbar(true)}
         onPointerLeave={() => fine && setToolbar(false)}
         onPointerDown={() => {
@@ -225,11 +225,11 @@ export function MessageRow({ m, botId, firstOfGroup, lastOfGroup, streaming, ani
         ) : (
           text && (
             <div
-              className={`rounded-[20px] px-3.5 py-2 text-[15px] leading-[1.45] ${mine ? "whitespace-pre-wrap" : "bot-md bg-[var(--surface-2)]"}`}
-              style={
+              data-testid="message-text"
+              className={
                 mine
-                  ? { background: "var(--bot)", color: "var(--bot-ink)", borderBottomRightRadius: lastOfGroup ? 6 : 20 }
-                  : { borderBottomLeftRadius: lastOfGroup ? 6 : 20 }
+                  ? "whitespace-pre-wrap rounded-[20px] bg-[var(--surface-2)] px-4 py-2.5 text-[15px] leading-[1.5] edge"
+                  : "bot-md text-[15.5px] leading-[1.68] text-[var(--text)]"
               }
             >
               {mine ? (

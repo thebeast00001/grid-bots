@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { UIMessage } from "ai";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, Globe, LoaderCircle, Search, TriangleAlert } from "lucide-react";
+import { ChevronRight, Globe, LoaderCircle, Search, TriangleAlert } from "lucide-react";
 import { ease } from "@/lib/motion";
 import { stepsOf, summary, type Step } from "./sources";
 
@@ -20,16 +20,16 @@ export function ResearchStrip({ parts, answered }: { parts: UIMessage["parts"]; 
   const showSteps = !foldable || open;
 
   return (
-    <div data-testid="research" className="mb-1.5 w-[min(440px,100%)] overflow-hidden rounded-2xl bg-[var(--surface)] text-[13px] edge">
+    <div data-testid="research" className="mb-2 w-full text-[13.5px]">
       {foldable && (
         <button
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          className="press flex w-full items-center gap-2 px-3 py-2 text-left text-[var(--text-2)] hover:text-[var(--text)]"
+          className="press inline-flex max-w-full items-center gap-1.5 rounded-lg py-1 text-left text-[var(--text-2)] hover:text-[var(--text)]"
         >
           <Globe size={14} className="shrink-0" aria-hidden />
-          <span className="min-w-0 flex-1 truncate">{summary(steps)}</span>
-          <ChevronDown size={14} aria-hidden className="shrink-0 transition-transform duration-200" style={{ transform: open ? "rotate(180deg)" : undefined }} />
+          <span className="min-w-0 truncate">{summary(steps)}</span>
+          <ChevronRight size={14} aria-hidden className="shrink-0 transition-transform duration-200" style={{ transform: open ? "rotate(90deg)" : undefined }} />
         </button>
       )}
       <AnimatePresence initial={false}>
@@ -40,7 +40,7 @@ export function ResearchStrip({ parts, answered }: { parts: UIMessage["parts"]; 
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: ease.out }}
-            className={`flex flex-col gap-1.5 px-3 ${foldable ? "pb-2.5" : "py-2.5"}`}
+            className={`ml-[7px] flex flex-col gap-1.5 overflow-hidden border-l border-[var(--edge-strong)] pl-3.5 ${foldable ? "mt-1 pb-1" : "py-1"}`}
           >
             {steps.map((s, i) => (
               <StepRow key={i} step={s} />

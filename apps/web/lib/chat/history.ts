@@ -19,7 +19,8 @@ export const textOf = (m: Pick<UIMessage, "parts">) =>
 export async function loadThread(botId: string): Promise<UIMessage[]> {
   const db = await getDb();
   const rows = await db.select().from(messages).where(eq(messages.botId, botId)).orderBy(asc(messages.seq));
-  return rows.map((r) => ({ id: r.id, role: r.role, parts: r.parts as UIMessage["parts"], metadata: r.metadata }));
+  // `at`: when it was written, for the time over each stretch of the conversation.
+  return rows.map((r) => ({ id: r.id, role: r.role, parts: r.parts as UIMessage["parts"], metadata: { ...r.metadata, at: r.createdAt } }));
 }
 
 /**
