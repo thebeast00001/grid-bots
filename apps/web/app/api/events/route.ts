@@ -1,4 +1,4 @@
-import { subscribe } from "@/lib/events";
+import { streamClosed, streamOpened, subscribe } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +19,14 @@ export async function GET(req: Request) {
       };
       const off = subscribe((e) => send(`data: ${JSON.stringify(e)}\n\n`));
       const ping = setInterval(() => send(": ping\n\n"), PING_MS);
+      streamOpened();
+      let stopped = false;
       stop = () => {
+        if (stopped) return;
+        stopped = true;
         off();
         clearInterval(ping);
+        streamClosed();
       };
       req.signal.addEventListener("abort", () => {
         stop();

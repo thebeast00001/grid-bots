@@ -16,7 +16,7 @@ test("service worker and offline page are served", async ({ request }) => {
   const sw = await request.get("/sw.js");
   expect(sw.ok()).toBe(true);
   expect(sw.headers()["content-type"]).toContain("javascript");
-  expect(await sw.text()).toContain('GRID_SW = "m1-2"');
+  expect(await sw.text()).toContain('GRID_SW = "m1-3"');
   const offline = await request.get("/offline");
   expect(offline.ok()).toBe(true);
   expect(await offline.text()).toContain("You're offline");

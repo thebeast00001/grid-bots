@@ -16,7 +16,9 @@ const ASK = " Ask the user, then try again.";
 const NOT_FOUND = { ok: false as const, error: "No reminder with that id. Use list_reminders to find it." };
 
 /** Every bot's tools: remembering, reacting, reminders and routines. `zone` is the user's time zone. */
-export function makeTools(p: { botId: string; lastUserMessageId?: string; zone: string }): ToolSet {
+export type Rating = { importance: "high" | "normal" | "low"; headline: string };
+
+export function makeTools(p: { botId: string; lastUserMessageId?: string; zone: string; onRate?: (r: Rating) => void }): ToolSet {
   const { zone } = p;
   const at = (when: string) => {
     const r = parseWhen(when, { now: new Date(), zone });
@@ -54,6 +56,23 @@ export function makeTools(p: { botId: string; lastUserMessageId?: string; zone: 
         return { saved: true, id: m.id };
       },
     }),
+    // Only in a routine run: say how much the result needs the user's attention.
+    ...(p.onRate
+      ? {
+          rate_result: tool({
+            description:
+              "Say how much this routine's result needs the user's attention, with a one-line headline for their notification. high: they should see it now (something changed, or they asked for it at this time); normal: worth a look; low: nothing new.",
+            inputSchema: z.object({
+              importance: z.enum(["high", "normal", "low"]),
+              headline: z.string().min(1).max(120).describe('The notification text: "Flight to Goa dropped to ₹5,400".'),
+            }),
+            execute: async (r) => {
+              p.onRate!(r);
+              return { ok: true as const };
+            },
+          }),
+        }
+      : {}),
     // Only in a conversation: a routine running on its own has no message to react to.
     ...(p.lastUserMessageId
       ? {

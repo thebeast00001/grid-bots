@@ -1,6 +1,6 @@
 // Grid service worker: makes the app installable and shows a friendly page when offline.
 // Never caches /api (chats, keys and memories always come fresh from the local server).
-const GRID_SW = "m1-2";
+const GRID_SW = "m1-3";
 const CACHE = `grid-${GRID_SW}`;
 const PRECACHE = ["/offline", "/icons/icon-192.png", "/icons/icon-512.png", "/manifest.webmanifest"];
 
@@ -14,6 +14,25 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k.startsWith("grid-") && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
+  );
+});
+
+// Web Push from Grid when no tab is open (a reminder, a routine result that matters).
+self.addEventListener("push", (event) => {
+  let d = {};
+  try {
+    d = event.data ? event.data.json() : {};
+  } catch {
+    d = {};
+  }
+  event.waitUntil(
+    self.registration.showNotification(d.title || "Grid", {
+      body: d.body || "",
+      tag: d.tag,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: d.url || "/" },
+    }),
   );
 });
 

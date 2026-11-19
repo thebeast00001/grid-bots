@@ -24,6 +24,16 @@ const bus = () => {
   return g.__gridBus;
 };
 
+const streams = globalThis as unknown as { __gridStreams?: number };
+/** How many apps are listening right now (open event streams); 0 means nobody would see a toast. */
+export const openStreams = () => streams.__gridStreams ?? 0;
+export const streamOpened = () => {
+  streams.__gridStreams = openStreams() + 1;
+};
+export const streamClosed = () => {
+  streams.__gridStreams = Math.max(0, openStreams() - 1);
+};
+
 export function publish(e: GridEvent): void {
   bus().emit("event", e);
 }

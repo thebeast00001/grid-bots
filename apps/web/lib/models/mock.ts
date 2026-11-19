@@ -75,6 +75,17 @@ function reply(options: LanguageModelV4CallOptions): LanguageModelV4StreamPart[]
 
   if (last.startsWith("[[routine]]")) {
     const job = /Do this: (.+)/.exec(last)?.[1]?.trim() ?? "";
+    // "urgent" jobs rate their result high, "nothing new" ones low; others don't rate.
+    const importance = /urgent/i.test(job) ? "high" : /nothing new/i.test(job) ? "low" : null;
+    const rated = prompt.some((m) => m.role === "tool");
+    if (importance && !rated && options.tools?.some((t) => t.name === "rate_result")) {
+      const headline = `${importance === "high" ? "Heads up" : "All quiet"}: ${job}`.slice(0, 120);
+      return [
+        { type: "stream-start", warnings: [] },
+        { type: "tool-call", toolCallId: `rate-${users.length}`, toolName: "rate_result", input: JSON.stringify({ importance, headline }) },
+        { type: "finish", usage, finishReason: { unified: "tool-calls", raw: undefined } },
+      ];
+    }
     return textParts(`Routine result: ${job}`);
   }
 

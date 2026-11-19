@@ -56,7 +56,7 @@ test("a run posts the result into the chat", async () => {
 
 test("the run prompt names the routine, its schedule and the job", () => {
   expect(routinePrompt({ name: "Morning briefing", instruction: "Give me a briefing" }, "Weekdays at 8:00 AM")).toBe(
-    '[[routine]] It\'s time for your routine "Morning briefing" (Weekdays at 8:00 AM). The user set it up to run on its own and isn\'t here right now. Do this: Give me a briefing\nReply with just the result, written for the user to read later.',
+    '[[routine]] It\'s time for your routine "Morning briefing" (Weekdays at 8:00 AM). The user set it up to run on its own and isn\'t here right now. Do this: Give me a briefing\nReply with just the result, written for the user to read later. Then use rate_result to say how much it needs their attention.',
   );
 });
 
@@ -126,4 +126,22 @@ test("the scheduler starts due routines", async () => {
   } finally {
     stopScheduler();
   }
+});
+
+test("a rated result carries its importance and headline into the inbox", async () => {
+  await connectMock();
+  const { listNotifications } = await import("../notifications/repo");
+  const { bot, routine } = await routineFor("Rated", "urgent: check the stove");
+  await runRoutine(routine.id, "manual");
+  const [n] = (await listNotifications(1000)).filter((x) => x.botId === bot.id);
+  expect(n).toMatchObject({ kind: "routine", importance: "high", body: "Heads up: urgent: check the stove", ping: true });
+});
+
+test("a low-importance result waits quietly by default", async () => {
+  await connectMock();
+  const { listNotifications } = await import("../notifications/repo");
+  const { bot, routine } = await routineFor("Calm", "tell me if there's nothing new");
+  await runRoutine(routine.id, "manual");
+  const [n] = (await listNotifications(1000)).filter((x) => x.botId === bot.id);
+  expect(n).toMatchObject({ importance: "low", ping: false, reason: "not-important" });
 });

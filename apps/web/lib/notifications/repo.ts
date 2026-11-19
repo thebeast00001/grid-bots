@@ -4,7 +4,8 @@ import { getBot } from "../bots/repo";
 import type { NotificationView } from "../client-types";
 import { getDb } from "../db/client";
 import { notifications, type NotificationRow } from "../db/schema";
-import { publish } from "../events";
+import { openStreams, publish } from "../events";
+import { sendPush } from "./push";
 import { getSetting, userZone } from "../settings";
 import { PING_FOR, shouldPing, type Importance, type NotificationKind, type PingFor, type QuietHours } from "./rules";
 
@@ -69,6 +70,10 @@ export async function notify(input: { botId: string; kind: NotificationKind; bod
   await trim();
   const view = toView(row);
   publish({ type: "notification", notification: view });
+  // With an app open, it shows the toast or system notification itself; otherwise push it.
+  if (view.ping && openStreams() === 0) {
+    await sendPush({ title: view.title, body: view.body, url: `/bots/${view.botId}`, tag: view.id }).catch((e) => console.error("[grid] push:", e));
+  }
   return view;
 }
 

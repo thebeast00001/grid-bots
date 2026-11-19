@@ -5,7 +5,7 @@ import { getBot, touchBot } from "../bots/repo";
 import { inlineFileParts } from "../chat/files";
 import { loadThread, textOf, trimHistory } from "../chat/history";
 import { buildInstructions } from "../chat/instructions";
-import { makeTools } from "../chat/tools";
+import { makeTools, type Rating } from "../chat/tools";
 import { chatUIStream } from "../chat/ui-stream";
 import type { RunView } from "../client-types";
 import { getDb } from "../db/client";
@@ -31,7 +31,7 @@ export type RoutinePart = {
 
 /** What the bot is told when its routine comes round (never stored in the chat). */
 export function routinePrompt(r: Pick<RoutineRow, "name" | "instruction">, schedule: string): string {
-  return `[[routine]] It's time for your routine "${r.name}" (${schedule}). The user set it up to run on its own and isn't here right now. Do this: ${r.instruction}\nReply with just the result, written for the user to read later.`;
+  return `[[routine]] It's time for your routine "${r.name}" (${schedule}). The user set it up to run on its own and isn't here right now. Do this: ${r.instruction}\nReply with just the result, written for the user to read later. Then use rate_result to say how much it needs their attention.`;
 }
 
 const hex = (n: number) => randomBytes(n).toString("hex");
@@ -57,7 +57,7 @@ async function drain(stream: ReadableStream<unknown>) {
 }
 
 /** Does the routine's job with the bot's model, instructions and tools. Throws on failure. */
-async function work(r: RoutineRow, runId: string, messageId: string): Promise<UIMessage> {
+async function work(r: RoutineRow, runId: string, messageId: string, onRate: (x: Rating) => void): Promise<UIMessage> {
   const bot = await getBot(r.botId);
   if (!bot) throw notFound("Bot");
   const resolved = await resolveModel(bot.model);
@@ -66,7 +66,7 @@ async function work(r: RoutineRow, runId: string, messageId: string): Promise<UI
   const history = trimHistory(thread.slice(-HISTORY));
   const prompt: UIMessage = { id: `prompt_${runId}`, role: "user", parts: [{ type: "text", text: routinePrompt(r, scheduleLabel(r, zone)) }] };
   const instructions = buildInstructions({ bot, zone, botMemories, userMemories, now: new Date(), interview: { pending: false, answered: 0 }, tools: resolved.tools });
-  const tools = resolved.tools ? makeTools({ botId: bot.id, zone }) : undefined;
+  const tools = resolved.tools ? makeTools({ botId: bot.id, zone, onRate }) : undefined;
   const modelMessages = await convertToModelMessages(await inlineFileParts([...history, prompt]), { tools });
 
   const result = streamText({
@@ -162,8 +162,9 @@ async function finishRun(r: RoutineRow, runId: string, lateRun: boolean, fallbac
   let status: "done" | "failed" = "done";
   let failed: { error: string; action?: { label: string; href: string } } | undefined;
   let parts: UIMessage["parts"] = [];
+  let rating: Rating | undefined;
   try {
-    parts = (await work(r, runId, messageId)).parts;
+    parts = (await work(r, runId, messageId, (x) => (rating = x))).parts;
   } catch (e) {
     status = "failed";
     failed = failureOf(e);
@@ -187,7 +188,13 @@ async function finishRun(r: RoutineRow, runId: string, lateRun: boolean, fallbac
   if (saved) {
     const bot = await getBot(r.botId);
     publish({ type: "message", botId: r.botId, messageId, title: bot?.name, body: status === "done" ? r.name : `${r.name} couldn't run` });
-    await notify({ botId: r.botId, kind: status === "done" ? "routine" : "routine-failed", body: status === "done" ? r.name : `${r.name} couldn't run`, messageId }).catch(() => {});
+    await notify({
+      botId: r.botId,
+      kind: status === "done" ? "routine" : "routine-failed",
+      body: status === "done" ? (rating?.headline ?? r.name) : `${r.name} couldn't run`,
+      importance: status === "done" ? rating?.importance : "high",
+      messageId,
+    }).catch(() => {});
   }
   publish({ type: "run", botId: r.botId, routineId: r.id, runId, name: r.name, status });
   publish({ type: "routines", botId: r.botId });

@@ -160,6 +160,14 @@ export const notifications = pgTable(
   (t) => [index("notifications_created_idx").on(t.createdAt), index("notifications_unread_idx").on(t.botId, t.readAt)],
 );
 
+/** Browsers that asked for Web Push (the installed app, when no tab is open). */
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  endpoint: text("endpoint").primaryKey(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: instant("created_at").notNull().defaultNow(),
+});
+
 export type Memory = typeof memories.$inferSelect;
 export type NotificationRow = typeof notifications.$inferSelect;
 export type RoutineRow = typeof routines.$inferSelect;
