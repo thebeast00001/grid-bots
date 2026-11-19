@@ -82,7 +82,7 @@ export function ChatView({ bot, initial, mobile = false }: { bot: BotView; initi
   };
   const [routineRun, setRoutineRun] = useState<string | null>(null);
   useLiveEvent((e) => {
-    if (e.type === "notification" || e.botId !== bot.id) return;
+    if (!("botId" in e) || e.botId !== bot.id) return;
     if (e.type === "message") void appendFromServer();
     if (e.type === "run") setRoutineRun(e.status === "running" ? e.name : null);
   });

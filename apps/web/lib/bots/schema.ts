@@ -25,4 +25,6 @@ export const BotPatchBody = z.object({
   interview: z.enum(["pending", "done", "skipped"]).optional(),
   model: z.object({ providerId: z.string().min(1), modelId: z.string().min(1) }).nullable().optional(),
   instructions: z.array(z.string().min(1).max(500)).max(30).optional(),
+  /** Mute notifications: an hour, until tomorrow 9 AM, until turned back on; null unmutes. */
+  mute: z.enum(["1h", "tomorrow", "forever"]).nullable().optional(),
 });

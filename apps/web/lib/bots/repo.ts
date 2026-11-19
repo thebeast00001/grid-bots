@@ -1,9 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { desc, eq, sql } from "drizzle-orm";
+import { DateTime } from "luxon";
 import type { CritterConfig } from "../critter/types";
 import { getDb } from "../db/client";
 import { bots, memories, messages, type BotRow } from "../db/schema";
 import { HttpStatus } from "../http";
+import { userZone } from "../settings";
 import { mirrorBot, removeMirror } from "./mirror";
 
 export type Bot = BotRow;
@@ -90,6 +92,25 @@ export async function updateBot(id: string, patch: BotPatch): Promise<Bot> {
 export async function touchBot(id: string): Promise<void> {
   const db = await getDb();
   await db.update(bots).set({ updatedAt: new Date().toISOString() }).where(eq(bots.id, id));
+}
+
+export type MuteChoice = "1h" | "tomorrow" | "forever" | null;
+/** Year 9999: muted until turned back on. */
+export const MUTED_FOREVER = "9999-12-31T00:00:00.000Z";
+
+/** Mutes a bot's notifications (or unmutes with null). Doesn't count as activity, so the list order stays. */
+export async function muteBot(id: string, choice: MuteChoice): Promise<Bot> {
+  let until: string | null = null;
+  if (choice === "1h") until = new Date(Date.now() + 3_600_000).toISOString();
+  else if (choice === "forever") until = MUTED_FOREVER;
+  else if (choice === "tomorrow") {
+    const zone = await userZone();
+    until = DateTime.now().setZone(zone).plus({ days: 1 }).set({ hour: 9, minute: 0, second: 0, millisecond: 0 }).toUTC().toISO();
+  }
+  const db = await getDb();
+  const [bot] = await db.update(bots).set({ mutedUntil: until }).where(eq(bots.id, id)).returning();
+  if (!bot) throw new HttpStatus(404, "not-found", "Bot not found.");
+  return bot;
 }
 
 export async function deleteBot(id: string): Promise<void> {

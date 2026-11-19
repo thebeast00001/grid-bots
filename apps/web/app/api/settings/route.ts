@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { errorResponse, readJson } from "@/lib/http";
 import type { ModelRef } from "@/lib/models/kinds";
+import { notificationPrefs } from "@/lib/notifications/repo";
+import { HHMM, PING_FOR } from "@/lib/notifications/rules";
 import { deleteSetting, getSetting, isZone, setSetting } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +12,7 @@ async function current() {
     defaultModel: (await getSetting<ModelRef | null>("defaultModel")) ?? null,
     chatgptWelcomeSeen: (await getSetting<boolean>("chatgptWelcomeSeen")) ?? false,
     timezone: (await getSetting<string>("timezone")) ?? null,
+    ...(await notificationPrefs()),
   };
 }
 
@@ -26,6 +29,9 @@ const Patch = z.object({
   chatgptWelcomeSeen: z.boolean().optional(),
   /** The browser's IANA zone, so reminders go off at the user's local time. */
   timezone: z.string().refine(isZone, "Unknown time zone.").optional(),
+  /** A daily window (user's zone, may cross midnight) when only reminders ping; null turns it off. */
+  quietHours: z.object({ from: z.string().regex(HHMM, "Use HH:mm."), to: z.string().regex(HHMM, "Use HH:mm.") }).nullable().optional(),
+  pingFor: z.enum(PING_FOR as [string, ...string[]]).optional(),
 });
 
 export async function PATCH(req: Request) {

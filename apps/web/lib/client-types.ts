@@ -28,6 +28,8 @@ export type BotView = {
   interview: "pending" | "done" | "skipped";
   model: import("./models/types").ModelRef | null;
   instructions: string[];
+  /** Notifications held until then (year 9999 = until turned back on); null = not muted. */
+  mutedUntil?: string | null;
   createdAt: string;
   updatedAt: string;
   preview?: string | null;

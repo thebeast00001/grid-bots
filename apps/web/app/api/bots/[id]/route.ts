@@ -1,4 +1,4 @@
-import { deleteBot, getBot, updateBot } from "@/lib/bots/repo";
+import { deleteBot, getBot, muteBot, updateBot } from "@/lib/bots/repo";
 import { BotPatchBody } from "@/lib/bots/schema";
 import { errorResponse, notFound, readJson } from "@/lib/http";
 
@@ -18,8 +18,11 @@ export async function GET(_req: Request, { params }: Ctx) {
 
 export async function PATCH(req: Request, { params }: Ctx) {
   try {
-    const patch = BotPatchBody.parse(await readJson(req));
-    return Response.json(await updateBot((await params).id, patch));
+    const id = (await params).id;
+    const { mute, ...patch } = BotPatchBody.parse(await readJson(req));
+    let bot = mute !== undefined ? await muteBot(id, mute) : null;
+    if (Object.keys(patch).length > 0 || !bot) bot = await updateBot(id, patch);
+    return Response.json(bot);
   } catch (e) {
     return errorResponse(e);
   }
