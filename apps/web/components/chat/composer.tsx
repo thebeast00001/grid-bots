@@ -117,7 +117,7 @@ export function Composer(p: Props) {
           </p>
         )}
 
-        <div data-testid="composer-box" className="field rounded-[22px] bg-[var(--surface)] px-3 pb-2.5 pt-3 edge transition-[border-color] duration-150">
+        <div data-testid="composer-box" className="field field-quiet rounded-[22px] bg-[var(--surface)] px-3 pb-2.5 pt-3 edge transition-[border-color] duration-150">
           {files.length > 0 && (
             <div className="flex flex-wrap gap-2 px-1.5 pb-1.5 pt-1">
               {files.map((f, i) => (

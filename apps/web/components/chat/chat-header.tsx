@@ -32,7 +32,7 @@ export function ChatHeader(p: {
           <ArrowLeft size={18} />
         </Link>
       )}
-      <Critter cfg={bot.avatar} size={30} pose={status.pose} label={bot.name} />
+      <Critter cfg={bot.avatar} size={30} pose={status.pose} label={bot.name} smooth />
       <div className="min-w-0 flex-1">
         <div className="truncate text-[15px] font-semibold leading-tight">{bot.name}</div>
         <div className="relative h-[17px] overflow-hidden text-[12.5px]" aria-live="polite">

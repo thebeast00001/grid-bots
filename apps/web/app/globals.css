@@ -111,6 +111,8 @@ body { overflow: hidden; }
 }
 /* A text field's box: one ring in the bot's colour while the field inside has focus. */
 .field:focus-within { box-shadow: 0 0 0 1.5px color-mix(in oklch, var(--bot) 70%, transparent); }
+/* The message box is focused most of the time: a quiet edge instead of a coloured ring. */
+.field-quiet:focus-within { box-shadow: 0 0 0 1px var(--edge-strong); }
 
 @media (hover: hover) and (pointer: fine) {
   .hover-surface:hover { background: var(--surface-2); }

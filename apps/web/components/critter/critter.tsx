@@ -24,6 +24,8 @@ type Props = {
   animated?: boolean;
   /** Studio hover preview. */
   eyesOverride?: EyeId;
+  /** Glide between moods with the motion loop even when small (default: 48px and up). */
+  smooth?: boolean;
   className?: string;
   label?: string;
 };
@@ -49,6 +51,7 @@ export function Critter({
   pettable = false,
   animated = true,
   eyesOverride,
+  smooth,
   className = "",
   label,
 }: Props) {
@@ -155,7 +158,7 @@ export function Critter({
   // Small ones (lists) keep the cheap CSS breathing.
   const breatheRef = useRef<SVGGElement>(null);
   const accRef = useRef<SVGGElement>(null);
-  const engine = animated && !reduce && size >= 48;
+  const engine = animated && !reduce && (smooth ?? size >= 48);
   useEffect(() => {
     if (!engine) return;
     let state = initialMotion(poseRef.current);
